@@ -1,0 +1,9 @@
+{
+  "name": "ramblings-skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ramblings workflow skills and OpenCode command-injection plugin",
+  "type": "module",
+  "main": "./plugin/ramblings-plugin.ts",
+  "exports": "./plugin/ramblings-plugin.ts"
+}
