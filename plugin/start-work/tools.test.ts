@@ -19,26 +19,29 @@ test("ramblings_start_work_rerun_continuation returns stable success metadata", 
   await mkdir(path.join(projectRoot, ".ramblings", "checklists"), { recursive: true })
   const checklistPath = path.join(projectRoot, ".ramblings", "checklists", "tool.yaml")
 
-  await writeFile(checklistPath, `plan: .ramblings/plans/tool.md
+  await writeFile(
+    checklistPath,
+    `plan: .ramblings/plans/tool.md
 active_task: null
 execution_state: running
-delegations: []
 tasks:
   - id: task-1
     title: Todo
     status: not_started
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
     last_update: null
-`)
+`,
+  )
 
-  const result = await startWorkTools.ramblings_start_work_rerun_continuation.execute({
-    project_root: projectRoot,
-    checklist_path: checklistPath,
-  }, {} as never)
+  const result = await startWorkTools.ramblings_start_work_rerun_continuation.execute(
+    {
+      project_root: projectRoot,
+      checklist_path: checklistPath,
+    },
+    {} as never,
+  )
 
   assertObjectToolResult(result)
   assert.equal(result.metadata?.ok, true)
@@ -50,17 +53,49 @@ tasks:
 test("ramblings_start_work_rerun_continuation preserves specific checklist error codes", async () => {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-tool-error-"))
   const badChecklistPath = path.join(projectRoot, "bad.yaml")
-  await writeFile(badChecklistPath, `plan: .ramblings/plans/tool.md
+  await writeFile(
+    badChecklistPath,
+    `plan: .ramblings/plans/tool.md
 execution_state: running
 tasks: []
 notes:
   - label: invalid
-`)
+`,
+  )
 
-  const result = await startWorkTools.ramblings_start_work_rerun_continuation.execute({
-    project_root: projectRoot,
-    checklist_path: badChecklistPath,
-  }, {} as never)
+  const result = await startWorkTools.ramblings_start_work_rerun_continuation.execute(
+    {
+      project_root: projectRoot,
+      checklist_path: badChecklistPath,
+    },
+    {} as never,
+  )
+
+  assertObjectToolResult(result)
+  assert.equal(result.metadata?.ok, false)
+  assert.equal(result.metadata?.code, "CHECKLIST_VALIDATION_FAILED")
+})
+
+test("ramblings_start_work_rerun_continuation reports malformed tasks as validation failures", async () => {
+  const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-tool-bad-delegation-"))
+  const badChecklistPath = path.join(projectRoot, "bad-delegation.yaml")
+  await writeFile(
+    badChecklistPath,
+    `plan: .ramblings/plans/tool.md
+active_task: null
+execution_state: running
+tasks:
+  - not-an-object
+`,
+  )
+
+  const result = await startWorkTools.ramblings_start_work_rerun_continuation.execute(
+    {
+      project_root: projectRoot,
+      checklist_path: badChecklistPath,
+    },
+    {} as never,
+  )
 
   assertObjectToolResult(result)
   assert.equal(result.metadata?.ok, false)
@@ -71,9 +106,12 @@ test("ramblings_start_work_resolve preserves original artifact resolution kind f
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-tool-resolve-"))
   await mkdir(path.join(projectRoot, ".ramblings", "checklists"), { recursive: true })
 
-  const result = await startWorkTools.ramblings_start_work_resolve.execute({
-    project_root: projectRoot,
-  }, {} as never)
+  const result = await startWorkTools.ramblings_start_work_resolve.execute(
+    {
+      project_root: projectRoot,
+    },
+    {} as never,
+  )
 
   assertObjectToolResult(result)
   assert.equal(result.metadata?.ok, true)
@@ -81,29 +119,18 @@ test("ramblings_start_work_resolve preserves original artifact resolution kind f
   assert.equal(result.metadata?.continuationKind, "ask-user")
 })
 
-test("recordDelegatedLaneTerminalOutcome records the first delegated lane completion and clears task delegation", () => {
+test("recordDelegatedLaneTerminalOutcome clears blocked task wait state", () => {
   const checklist: StartWorkChecklistState = {
     plan: ".ramblings/plans/tool.md",
     active_task: "task-1",
     execution_state: "waiting",
-    delegations: [
-      {
-        name: "lane-1",
-        role: "explorer",
-        task_ref: "task-1",
-        task_id: "lane-task-1",
-        status: "running",
-      },
-    ],
     tasks: [
       {
         id: "task-1",
         title: "Delegated task",
         status: "in_progress",
-        delegated_to: { role: "explorer", task_id: "lane-task-1" },
-        waiting_on: "lane_completion",
-        blocked_by: null,
-        unblock_when: null,
+        blocked_by: "delegation:explorer",
+        unblock_when: "delegated lane completion",
         next_action: null,
         last_update: null,
       },
@@ -114,32 +141,20 @@ test("recordDelegatedLaneTerminalOutcome records the first delegated lane comple
 
   assert.equal(outcome.kind, "recorded")
   assert.equal(outcome.metadata.status, "recorded")
-  assert.equal(outcome.checklist.tasks[0].delegated_to, null)
-  assert.equal(outcome.checklist.tasks[0].waiting_on, null)
-  assert.equal(outcome.checklist.delegations?.[0].status, "terminal_unreconciled")
+  assert.equal(outcome.checklist.tasks[0].blocked_by, null)
+  assert.equal(outcome.checklist.tasks[0].unblock_when, null)
 })
 
-test("recordDelegatedLaneTerminalOutcome does not redispatch or rewrite state on duplicate completion", () => {
+test("recordDelegatedLaneTerminalOutcome does not rewrite already unblocked terminal state", () => {
   const checklist: StartWorkChecklistState = {
     plan: ".ramblings/plans/tool.md",
     active_task: "task-1",
     execution_state: "running",
-    delegations: [
-      {
-        name: "lane-1",
-        role: "explorer",
-        task_ref: "task-1",
-        task_id: "lane-task-1",
-        status: "terminal_unreconciled",
-      },
-    ],
     tasks: [
       {
         id: "task-1",
         title: "Delegated task",
         status: "in_progress",
-        delegated_to: null,
-        waiting_on: null,
         blocked_by: null,
         unblock_when: null,
         next_action: null,
@@ -153,48 +168,10 @@ test("recordDelegatedLaneTerminalOutcome does not redispatch or rewrite state on
   assert.equal(outcome.kind, "already-handled")
   assert.equal(outcome.metadata.ok, true)
   assert.equal(outcome.metadata.status, "already-handled")
-  assert.equal(outcome.checklist.delegations?.[0].status, "terminal_unreconciled")
-  assert.equal(outcome.checklist.tasks[0].delegated_to, null)
+  assert.equal(outcome.checklist.tasks[0].blocked_by, null)
 })
 
-test("recordDelegatedLaneTerminalOutcome reports mapping mismatches clearly", () => {
-  const checklist: StartWorkChecklistState = {
-    plan: ".ramblings/plans/tool.md",
-    active_task: "task-1",
-    execution_state: "waiting",
-    delegations: [
-      {
-        name: "lane-1",
-        role: "explorer",
-        task_ref: "task-1",
-        task_id: "lane-task-1",
-        status: "running",
-      },
-    ],
-    tasks: [
-      {
-        id: "task-1",
-        title: "Delegated task",
-        status: "in_progress",
-        delegated_to: { role: "explorer", task_id: "other-lane" },
-        waiting_on: "lane_completion",
-        blocked_by: null,
-        unblock_when: null,
-        next_action: null,
-        last_update: null,
-      },
-    ],
-  }
-
-  const outcome = recordDelegatedLaneTerminalOutcome(checklist, "task-1", "mismatch")
-
-  assert.equal(outcome.kind, "mismatch")
-  assert.equal(outcome.metadata.ok, false)
-  assert.match(outcome.message, /stale delegated lane|does not match delegated lane task|mapped to a different registry lane/i)
-  assert.equal(outcome.metadata.status, "mismatch")
-})
-
-test("recordDelegatedLaneTerminalOutcome marks missing-task errors as workflow failures", () => {
+test("recordDelegatedLaneTerminalOutcome does not treat non-waiting task as terminal writeback", () => {
   const checklist: StartWorkChecklistState = {
     plan: ".ramblings/plans/tool.md",
     active_task: "task-1",
@@ -204,8 +181,6 @@ test("recordDelegatedLaneTerminalOutcome marks missing-task errors as workflow f
         id: "task-1",
         title: "Delegated task",
         status: "in_progress",
-        delegated_to: { role: "explorer", task_id: "lane-task-1" },
-        waiting_on: "lane_completion",
         blocked_by: null,
         unblock_when: null,
         next_action: null,
@@ -216,9 +191,9 @@ test("recordDelegatedLaneTerminalOutcome marks missing-task errors as workflow f
 
   const outcome = recordDelegatedLaneTerminalOutcome(checklist, "task-1", "missing")
 
-  assert.equal(outcome.kind, "error")
-  assert.equal(outcome.metadata.ok, false)
-  assert.equal(outcome.metadata.status, "error")
+  assert.equal(outcome.kind, "already-handled")
+  assert.equal(outcome.metadata.ok, true)
+  assert.equal(outcome.metadata.status, "already-handled")
 })
 
 test("reconcileAndRerunContinuation yields stable waiting, done, and continue outcomes", () => {
@@ -227,24 +202,13 @@ test("reconcileAndRerunContinuation yields stable waiting, done, and continue ou
       plan: ".ramblings/plans/tool.md",
       active_task: "task-1",
       execution_state: "running",
-      delegations: [
-        {
-          name: "lane-1",
-          role: "explorer",
-          task_ref: "task-1",
-          task_id: "lane-task-1",
-          status: "running",
-        },
-      ],
       tasks: [
         {
           id: "task-1",
           title: "Delegated task",
           status: "in_progress",
-          delegated_to: { role: "explorer", task_id: "lane-task-1" },
-          waiting_on: "lane_completion",
-          blocked_by: null,
-          unblock_when: null,
+          blocked_by: "delegation:explorer",
+          unblock_when: "delegated lane completion",
           next_action: null,
           last_update: null,
         },
@@ -252,8 +216,6 @@ test("reconcileAndRerunContinuation yields stable waiting, done, and continue ou
           id: "task-2",
           title: "Next task",
           status: "not_started",
-          delegated_to: null,
-          waiting_on: null,
           blocked_by: null,
           unblock_when: null,
           next_action: null,
@@ -271,22 +233,11 @@ test("reconcileAndRerunContinuation yields stable waiting, done, and continue ou
       plan: ".ramblings/plans/tool.md",
       active_task: "task-1",
       execution_state: "running",
-      delegations: [
-        {
-          name: "lane-1",
-          role: "explorer",
-          task_ref: "task-1",
-          task_id: "lane-task-1",
-          status: "running",
-        },
-      ],
       tasks: [
         {
           id: "task-1",
           title: "Delegated task",
           status: "complete",
-          delegated_to: { role: "explorer", task_id: "lane-task-1" },
-          waiting_on: "lane_completion",
           blocked_by: null,
           unblock_when: null,
           next_action: null,
@@ -304,24 +255,13 @@ test("reconcileAndRerunContinuation yields stable waiting, done, and continue ou
       plan: ".ramblings/plans/tool.md",
       active_task: "task-1",
       execution_state: "running",
-      delegations: [
-        {
-          name: "lane-1",
-          role: "explorer",
-          task_ref: "task-1",
-          task_id: "lane-task-1",
-          status: "running",
-        },
-      ],
       tasks: [
         {
           id: "task-1",
           title: "Delegated task",
           status: "in_progress",
-          delegated_to: { role: "explorer", task_id: "lane-task-1" },
-          waiting_on: "lane_completion",
-          blocked_by: null,
-          unblock_when: null,
+          blocked_by: "delegation:explorer",
+          unblock_when: "delegated lane completion",
           next_action: null,
           last_update: null,
         },
@@ -329,8 +269,6 @@ test("reconcileAndRerunContinuation yields stable waiting, done, and continue ou
           id: "task-2",
           title: "Next task",
           status: "not_started",
-          delegated_to: null,
-          waiting_on: null,
           blocked_by: null,
           unblock_when: null,
           next_action: null,

@@ -9,13 +9,10 @@ test("parseChecklistState accepts a valid checklist", () => {
   const checklist = parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
 active_task: null
 execution_state: running
-delegations: []
 tasks:
   - id: task-1
     title: Example
     status: not_started
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -30,13 +27,10 @@ test("parseChecklistState accepts an explicit cancelled work unit", () => {
   const checklist = parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
 active_task: null
 execution_state: cancelled
-delegations: []
 tasks:
   - id: task-1
     title: Cancelled slice
     status: cancelled
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -63,6 +57,18 @@ test("parseChecklistState rejects a missing plan", () => {
 tasks: []
 `),
     /plan must be a non-empty string/,
+  )
+})
+
+test("parseChecklistState rejects malformed tasks with a validation error", () => {
+  assert.throws(
+    () => parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
+active_task: null
+execution_state: running
+tasks:
+  - not-an-object
+`),
+    /Checklist task 0 must be an object/,
   )
 })
 

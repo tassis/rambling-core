@@ -29,7 +29,7 @@ In Conductor Mode, writing planning artifacts under `.ramblings/` is allowed and
 If execution state should live separately from the main plan, save it under:
 
 ```text
-.ramblings/checklists/YYYY-MM-DD-<topic>.md
+.ramblings/checklists/YYYY-MM-DD-<topic>.yaml
 ```
 
 ## When to use
@@ -48,6 +48,8 @@ Do not use it for trivial one-file tweaks unless the user explicitly asks for a 
 
 The plan must help a low-context engineer execute safely.
 
+Planning guidance includes task meaning, why a task exists, risk, and recommended execution strategy. Those semantic fields belong in the plan and **must not** be migrated into the checklist as durable runtime state.
+
 That means the plan must include:
 
 - exact files to read, create, or modify;
@@ -55,7 +57,7 @@ That means the plan must include:
 - how to validate each risky step;
 - where automated tests are realistic and where they are not;
 - what manual verification is required when tests are weak;
-- execution state markers so a later session can resume without guessing;
+- a separate execution-state reference so a later session can resume without guessing;
 - completion criteria that make each task safe to re-check before rerunning.
 
 ## Plan shape
@@ -78,46 +80,36 @@ Every plan should start with:
 
 Then add task sections.
 
-Immediately after the header, either add an inline execution tracker or link to a separate checklist file under `.ramblings/checklists/`.
-
-Inline form:
+Immediately after the header, add a required checklist reference:
 
 ```markdown
-## Execution Tracker
-
-- [ ] Task 1: [short name]
-- [ ] Task 2: [short name]
-- [ ] Task 3: [short name]
+**Execution State:** `.ramblings/checklists/YYYY-MM-DD-<topic>.yaml`
 ```
 
-This tracker starts unchecked. It exists so implementation sessions can update progress in-place instead of reconstructing state from memory.
-
-The tracker is a compact overview only. If the tracker and a task's `Status:` ever disagree, treat the task's `Status:` field as the source of truth.
-
-Separate-file form:
-
-```markdown
-**Execution State:** `.ramblings/checklists/YYYY-MM-DD-<topic>.md`
-```
-
-If a separate checklist file is used, it becomes the source of truth for execution progress and should mirror task names clearly.
+The referenced checklist is the source of truth for **current execution state** while execution is active (status + next action + blockers + update markers). The plan carries intent/risk/recommendations and should not carry live completion state.
 
 ## Task structure
 
-Use this format:
+Use this format (task metadata below is semantic planning guidance, not a hard runtime contract):
 
 ```markdown
 ## Task N: [short name]
 
 **Why:** [why this task exists]
 
-**Status:** [not started | in progress | blocked | complete]
+**Tags:** [short tags for routing/ownership e.g. `backend`, `frontend`, `docs`; optional]
+
+**Risk:** [low/medium/high; key uncertainty or blast radius]
 
 **Files:**
 - Read: `path/to/file`
 - Modify: `path/to/file`
 - Create: `path/to/file`
 - Verify: `path/to/test-or-command`
+
+**Suggested Capability:** [optional: capability the executor may want (e.g. code-editing, integration, review)]
+
+**Suggested External Review:** [optional: recommended reviewer type or focus, not mandatory]
 
 **Steps:**
 1. [specific action]
@@ -142,16 +134,24 @@ Use this format:
 
 ## Planning rules
 
-1. Use exact file paths.
-2. Keep tasks small and ordered.
-3. Prefer concrete steps over vague intent.
-4. If you mention tests, say exactly which tests or commands.
-5. If automated tests are not practical, say so explicitly and specify manual verification.
-6. Follow existing project structure unless the user is intentionally restructuring it.
-7. Every task must have a visible status field and completion criteria.
-8. Every risky or multi-step task must say how to detect "already done" before re-executing it.
-9. A task is not complete until its verification has passed and its status/tracker has been updated.
-10. Conductor Mode may write or update `.ramblings/plans/**` and `.ramblings/checklists/**`, but should not edit product code while doing planning-only work.
+Semantic metadata guidance:
+
+1. `Tags`, `Risk`, `Suggested Capability`, and `Suggested External Review` are hints for coordination and planning. They should never be treated as hard requirements, mandatory approvals, or executable dependencies.
+2. Keep them practical and lightweight; do not inflate every task with lengthy prose.
+3. Do not tie these fields to specific tool, extension, or agent names.
+4. The plan/checklist boundary remains: task meaning/risk/recommendation text belongs to the plan; the checklist remains live execution-state only.
+5. Checklist fields are expected to be sparse and current-state-focused (e.g., active task id, task status, and next action), not reusable orchestration descriptions.
+
+6. Use exact file paths.
+7. Keep tasks small and ordered.
+8. Prefer concrete steps over vague intent.
+9. If you mention tests, say exactly which tests or commands.
+10. If automated tests are not practical, say so explicitly and specify manual verification.
+11. Follow existing project structure unless the user is intentionally restructuring it.
+12. Every task must include completion criteria.
+13. Every risky or multi-step task must say how to detect "already done" before re-executing it.
+14. A task is not complete until its verification has passed and its completion is reflected in the referenced checklist.
+15. Conductor Mode may write or update `.ramblings/plans/**` and `.ramblings/checklists/**`, but should not edit product code while doing planning-only work.
 
 ## No-placeholder rule
 
@@ -175,7 +175,7 @@ For old or fragile codebases:
 2. If behavior is unclear, include a reproduction or observation step.
 3. If a risky file is large or confusing, say what part to inspect first.
 4. Prefer minimal, reversible changes over cleanup sprees.
-5. If execution may span multiple sessions, make the tracker and task statuses sufficient for another agent to resume safely.
+5. If execution may span multiple sessions, use the referenced checklist to preserve resumable progress safely.
 
 ## Before finishing the plan
 

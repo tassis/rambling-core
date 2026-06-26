@@ -181,7 +181,7 @@ export const startWorkTools = {
   }),
 
   ramblings_start_work_record_terminal: tool({
-    description: "Record a delegated lane terminal result deterministically and clear task-level delegation fields.",
+    description: "Record a delegated lane terminal result deterministically and clear transient delegation wait state.",
     args: projectRootChecklistTaskArgs,
     async execute({ project_root, checklist_path, task_id, note }: { project_root: string; checklist_path: string; task_id: string; note: string }) {
       const readResult = await readChecklistStateDetailed(project_root, checklist_path)

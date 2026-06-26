@@ -21,7 +21,7 @@ Treat this as /start-work semantics:
 - identify the active unfinished YAML checklist/plan safely before editing
 - first evaluate completed and cancelled work units for startup archive cleanup before selecting unfinished work
 - if completed/cancelled work units are safely archive-eligible, archive them first, clean the active-area copies, and only then continue unfinished work
-- if completed/cancelled cleanup is unsafe, ambiguous, missing required readiness evidence, or conflicts on source of truth, stop at explicit ask-user rather than continuing unfinished work
+- if completed/cancelled cleanup is unsafe, ambiguous, conflicts on source of truth, or otherwise cannot be validated safely, stop at explicit ask-user rather than continuing unfinished work
 - ignore .ramblings/archive/** during active plan/checklist discovery; archived artifacts are historical records, not runnable candidates
 - prefer a separate YAML checklist/execution-state artifact over inline plan status
 - treat handoffs as hints, not stronger than an active checklist

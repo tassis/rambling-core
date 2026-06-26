@@ -1,6 +1,6 @@
 ---
 name: ramblings-implementing-plans
-description: Execute a scoped .ramblings plan as the workflow orchestrator. Use when a written plan and execution state already exist and the next job is to sequence tasks, delegate safely, verify progress, and write state back without improvising the workflow. Especially useful for /start-work style execution where the orchestrator owns checklist state and delegated lanes may use separate implementation-posture skills.
+description: Execute a scoped .ramblings plan as the workflow orchestrator. Use when a written plan with companion checklist execution state already exists and the next job is to sequence tasks, verify progress, and write state back without improvising the workflow. Especially useful for `/start-work` execution where the conductor drafts the checklist and the orchestrator operationalizes it.
 ---
 
 # Ramblings Implementing Plans
@@ -15,14 +15,14 @@ It is primarily an execution-orchestration skill, not the implementation persona
 
 Usually one of these exists already:
 
-- a plan in `.ramblings/plans/`;
-- a plan in `.ramblings/plans/` plus execution state in `.ramblings/checklists/`;
-- an approved brief or plan plus a clear execution checklist;
-- a user-approved ordered task list.
+- a plan in `.ramblings/plans/` plus execution-state in `.ramblings/checklists/`;
+- a plan in `.ramblings/plans/` plus an execution-state checklist in `.ramblings/checklists/`;
+- an approved brief or plan plus a clear execution checklist in `.ramblings/checklists/`;
+- a user-approved ordered task list that already has a synchronized checklist artifact.
 
 If there is no real plan yet, stop and use `ramblings-writing-plans` first.
 
-If there is a plan but it does not expose execution state clearly enough to resume safely, add or normalize a checklist/tracker before doing broad multi-step work.
+If there is a plan but no clear execution checklist, add or normalize checklist state before doing broad multi-step work.
 
 If you are still in Conductor Mode, that normalization may write `.ramblings/plans/**` or `.ramblings/checklists/**` artifacts, but it must not spill into product-code edits.
 
@@ -35,8 +35,8 @@ Own:
 - task sequencing;
 - delegation choices;
 - verification gates;
-- checklist or execution-state writeback;
-- blocked / waiting / replanning / handoff / ready-check routing.
+- checklist execution-state writeback;
+- blocked / waiting / replanning / handoff / re-plan routing.
 
 Do not treat this skill as the default source of coding style, implementation persona, or domain-specific engineering judgment for delegated worker lanes.
 
@@ -51,6 +51,8 @@ Follow these rules:
 5. If the plan is wrong or stale, update the plan instead of silently freelancing.
 6. Do not create commits unless the user explicitly asks.
 7. Treat execution state as part of the deliverable, not as disposable session memory.
+8. Treat the checklist as a current-state execution artifact (`status`, `next_action`, blockers, `last_update`), not a full orchestration ledger.
+9. No execution without an active checklist; pause and normalize checklist state first if missing.
 
 ## Execution method choices
 
@@ -133,7 +135,7 @@ Do not execute the whole plan at once.
 
 Pick the next smallest meaningful task and focus on that slice only.
 
-Choose it from an explicit tracker, checkbox list, separate checklist file, or status field whenever one exists.
+Choose it from the active checklist entry (required). If missing, do not start task execution.
 
 ### 3. Check reality before coding
 
@@ -143,6 +145,8 @@ Before executing a task, confirm:
 - the code still roughly matches the assumptions;
 - the task is still valid in the current branch/state.
 - the task is not already complete according to the plan's completion criteria or current code state.
+
+If there is no active checklist artifact, execution cannot continue in this skill.
 
 If reality has changed, update the plan or record the deviation.
 
@@ -164,13 +168,12 @@ If the plan lacks explicit checks, add the smallest meaningful verification for 
 
 ### 6. Record progress
 
-Keep task tracking current.
+Keep checklist state current.
 
-If the plan uses checkboxes, update them.
+Update the active checklist entry as work progresses.
 If you discover a blocker, note it clearly rather than skipping ahead invisibly.
-If the plan only has prose tasks, add a minimal tracker or status markers before continuing deeper execution.
-If the tracker and a task's `Status:` disagree, fix the plan state and use the task `Status:` plus current code reality as the source of truth.
-If the plan points to a separate checklist file, use that checklist as the primary execution-state record and keep the plan references consistent with it.
+Use the checklist as the authoritative execution-state record; keep any plan references aligned, but not authoritative, for context.
+Keep delegation details (for example, which lane ran a task) out of durable checklist fields.
 
 ## Idempotent execution posture
 
@@ -179,7 +182,7 @@ Treat each task as resumable work:
 1. Re-read the task's completion criteria before making changes.
 2. Check whether the step is already complete before re-applying edits.
 3. Prefer narrowly scoped edits that can be safely re-verified.
-4. Record partial progress or blockers in the plan instead of keeping them only in chat.
+4. Record partial progress or blockers in the checklist instead of keeping them only in chat, but avoid encoding orchestration topology in the checklist core.
 5. When a rerun would be destructive or duplicative, stop and update the plan with the new reality.
 
 ## Layering model
@@ -187,9 +190,9 @@ Treat each task as resumable work:
 Preferred structure:
 
 1. `/start-work` or an equivalent execution entrypoint selects the active task.
-2. `ramblings-implementing-plans` owns orchestration for that task.
+2. `ramblings-implementing-plans` owns orchestration for that task and updates checklist state as execution unfolds.
 3. If the task is delegated to a code-editing lane, that lane may use a separate implementation-posture skill.
-4. The delegated lane returns results; the orchestrator verifies and writes back checklist state.
+4. The delegated lane returns results; the orchestrator writes the live execution outcome to checklist state.
 
 ## When to stop and re-plan
 
@@ -208,18 +211,16 @@ After each meaningful task:
 
 - run the specific tests or commands tied to that task;
 - if automated checks are weak, perform explicit manual verification;
-- update the task status or checklist only after the verification for that task passes;
+- update the checklist state only after the verification for that task passes;
 - do not wait until the very end to discover obvious breakage.
 
 Do not mark a task complete based on code edits alone.
 
-Before calling the overall work complete, use `ramblings-ready-check`.
-
 ## Related skills
 
-- use `ramblings-systematic-debugging` if execution turns into root-cause investigation;
-- use `ramblings-requesting-code-review` after meaningful implementation milestones or before final handoff;
-- use `ramblings-receiving-code-review` when feedback comes back and changes are needed.
+- if execution turns into root-cause investigation, switch to an external specialized debugging workflow if one exists;
+- if review is explicitly desired, use an external review-capable workflow or extension if available;
+- if external feedback comes back, handle it through the relevant follow-on workflow outside `ramblings-core`.
 - use a separate implementation-posture skill inside delegated code-editing lanes when the main risk is sloppy local execution rather than workflow ownership.
 
 ## Good execution summary format
@@ -235,8 +236,8 @@ When reporting progress, prefer:
 **Verified:**
 - `command` — result
 
-**Plan state updated:**
-- [checkbox/status/completion note updated in plan]
+**Checklist state updated:**
+- [checklist entry completed/blocked and verification note]
 
 **Blocked / Changed:**
 - [issue or plan deviation]

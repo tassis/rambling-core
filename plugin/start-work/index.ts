@@ -1,20 +1,10 @@
-import {
-  assignTaskDelegation,
-  clearTaskDelegation,
-  applyContinuationWriteback,
-  setActiveTask,
-  setDelegationStatus,
-  reconcileDelegatedLaneTerminalResult,
-  updateChecklistTask,
-  writeChecklistState,
-} from "./checklist"
+import { applyContinuationWriteback, setActiveTask, updateChecklistTask, writeChecklistState } from "./checklist"
 import { decideStartWorkContinuation, type StartWorkContinuationInput } from "./continuation"
 import { getNextRunnableTask, resolveStartWorkArtifacts } from "./artifacts"
 import {
   type StartWorkArtifactResolutionKind,
   type StartWorkChecklistState,
   type StartWorkContinuation,
-  type StartWorkDelegationRegistryEntry,
   type StartWorkRecordTerminalToolMetadata,
   type StartWorkTaskSelection,
 } from "./types"
@@ -36,7 +26,9 @@ export interface StartWorkLoopContinuationState {
   continuation: StartWorkContinuation
 }
 
-export async function resolveStartWorkLoop(projectRoot: string): Promise<StartWorkLoopState | StartWorkLoopContinuationState | StartWorkContinuation> {
+export async function resolveStartWorkLoop(
+  projectRoot: string,
+): Promise<StartWorkLoopState | StartWorkLoopContinuationState | StartWorkContinuation> {
   const artifactResolution = await resolveStartWorkArtifacts(projectRoot)
 
   if (artifactResolution.kind !== "resolved") {
@@ -71,22 +63,6 @@ export async function resolveStartWorkLoop(projectRoot: string): Promise<StartWo
   }
 }
 
-export function dispatchDelegatedLane(
-  checklist: StartWorkChecklistState,
-  taskId: string,
-  delegation: StartWorkDelegationRegistryEntry,
-  note: string,
-): StartWorkChecklistState {
-  return setActiveTask(
-    assignTaskDelegation(checklist, taskId, delegation, {
-      waiting_on: "lane_completion",
-      last_update: note,
-    }),
-    taskId,
-    "waiting",
-  )
-}
-
 export function recordDelegatedLaneTerminalResult(
   checklist: StartWorkChecklistState,
   taskId: string,
@@ -102,71 +78,50 @@ export function recordDelegatedLaneTerminalOutcome(
 ):
   | { kind: "recorded"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
   | { kind: "already-handled"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
-  | { kind: "mismatch"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
   | { kind: "error"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string } {
   const task = checklist.tasks.find((candidate) => candidate.id === taskId)
   if (!task) {
-    return terminalOutcome(checklist, taskId, "mismatch", `Task ${taskId} was not found in the checklist.`, null)
-  }
-
-  if (!checklist.delegations) {
-    return terminalOutcome(checklist, taskId, "error", `Checklist ${taskId} has no delegation registry for terminal reconciliation.`, null)
-  }
-
-  const registryEntry = checklist.delegations.find((delegation) => delegation.task_ref === taskId)
-  const delegatedLaneTaskId = task.delegated_to?.task_id ?? null
-
-  if (!registryEntry) {
-    return terminalOutcome(checklist, taskId, "mismatch", `Task ${taskId} has no registry entry for its delegated lane.`, null)
-  }
-
-  if (registryEntry.task_ref !== taskId) {
-    return terminalOutcome(checklist, taskId, "mismatch", `Task ${taskId} is mapped to a different registry lane.`, registryEntry.status)
-  }
-
-  if (delegatedLaneTaskId !== null && delegatedLaneTaskId !== registryEntry.task_id) {
-    return terminalOutcome(checklist, taskId, "mismatch", `Task ${taskId} is mapped to a stale delegated lane.`, registryEntry.status)
-  }
-
-  if (task.delegated_to === null && registryEntry.status === "terminal_unreconciled") {
-    return terminalOutcome(checklist, taskId, "already-handled", `Terminal result for ${taskId} was already recorded.`, registryEntry.status)
-  }
-
-  if (registryEntry.status !== "running") {
-    return terminalOutcome(checklist, taskId, "mismatch", `Delegation for ${taskId} must be running before recording terminal output.`, registryEntry.status)
-  }
-
-  if (delegatedLaneTaskId !== registryEntry.task_id) {
-    return terminalOutcome(checklist, taskId, "mismatch", `Task ${taskId} does not match delegated lane task ${registryEntry.task_id}.`, registryEntry.status)
-  }
-
-  const updatedChecklist = setActiveTask(
-    clearTaskDelegation(
-      setDelegationStatus(checklist, taskId, "terminal_unreconciled"),
+    return terminalOutcome(
+      checklist,
       taskId,
-      {
-        registryStatus: "terminal_unreconciled",
-        waiting_on: null,
+      "error",
+      `Task ${taskId} was not found in the checklist.`,
+    )
+  }
+
+  if (task.status !== "in_progress" || task.blocked_by === null || task.unblock_when === null) {
+    return terminalOutcome(
+      updateChecklistTask(checklist, taskId, {
         last_update: note,
-      },
-    ),
+      }),
+      taskId,
+      "already-handled",
+      `No delegated-wait state remains for ${taskId}.`,
+    )
+  }
+
+  const updated = setActiveTask(
+    updateChecklistTask(checklist, taskId, {
+      blocked_by: null,
+      unblock_when: null,
+      next_action: null,
+      last_update: note,
+    }),
     taskId,
     "running",
   )
 
-  return terminalOutcome(updatedChecklist, taskId, "recorded", `Recorded terminal result for ${taskId}.`, "terminal_unreconciled")
+  return terminalOutcome(updated, taskId, "recorded", `Recorded terminal result for ${taskId}.`)
 }
 
 function terminalOutcome(
   checklist: StartWorkChecklistState,
   taskId: string,
-  kind: "recorded" | "already-handled" | "mismatch" | "error",
+  kind: "recorded" | "already-handled" | "error",
   message: string,
-  delegationStatus: string | null,
 ):
   | { kind: "recorded"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
   | { kind: "already-handled"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
-  | { kind: "mismatch"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string }
   | { kind: "error"; checklist: StartWorkChecklistState; metadata: StartWorkRecordTerminalToolMetadata; message: string } {
   const metadata: StartWorkRecordTerminalToolMetadata = {
     ok: kind === "recorded" || kind === "already-handled",
@@ -174,7 +129,6 @@ function terminalOutcome(
     taskId,
     checklistPath: "",
     executionState: checklist.execution_state,
-    delegationStatus: (delegationStatus as StartWorkRecordTerminalToolMetadata["delegationStatus"]) ?? null,
     message,
   }
 
@@ -189,24 +143,15 @@ export function recordBlockedTask(
   nextAction: string,
   note: string,
 ): StartWorkChecklistState {
-  return setActiveTask(
-    clearTaskDelegation(
-      updateChecklistTask(checklist, taskId, {
-        status: "blocked",
-        blocked_by: blockedBy,
-        unblock_when: unblockWhen,
-        next_action: nextAction,
-        last_update: note,
-      }),
-      taskId,
-      {
-        waiting_on: null,
-        last_update: note,
-      },
-    ),
-    taskId,
-    "blocked",
-  )
+  const blockedState = updateChecklistTask(checklist, taskId, {
+    status: "blocked",
+    blocked_by: blockedBy,
+    unblock_when: unblockWhen,
+    next_action: nextAction,
+    last_update: note,
+  })
+
+  return setActiveTask(blockedState, taskId, "blocked")
 }
 
 export function recordReplanningState(
@@ -236,6 +181,33 @@ export function rerunContinuation(checklist: StartWorkChecklistState): StartWork
   const taskSelection = getNextRunnableTask(checklist)
   const input: StartWorkContinuationInput = { checklist, taskSelection }
   return decideStartWorkContinuation(input)
+}
+
+export function reconcileDelegatedLaneTerminalResult(
+  checklist: StartWorkChecklistState,
+  taskId: string,
+  note: string,
+): StartWorkChecklistState {
+  const task = checklist.tasks.find((candidate) => candidate.id === taskId)
+
+  if (!task) {
+    return checklist
+  }
+
+  if (task.status === "in_progress" && task.blocked_by !== null && task.unblock_when !== null) {
+    return setActiveTask(
+      updateChecklistTask(checklist, taskId, {
+        blocked_by: null,
+        unblock_when: null,
+        next_action: null,
+        last_update: note,
+      }),
+      taskId,
+      "running",
+    )
+  }
+
+  return setActiveTask(updateChecklistTask(checklist, taskId, { last_update: note }), taskId, checklist.execution_state)
 }
 
 export function reconcileAndRerunContinuation(

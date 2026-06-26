@@ -9,7 +9,6 @@ test("decideStartWorkContinuation returns continue for a runnable task", () => {
       active_task: null,
       execution_state: "running",
       tasks: [],
-      delegations: [],
     },
     taskSelection: {
       kind: "task",
@@ -17,8 +16,6 @@ test("decideStartWorkContinuation returns continue for a runnable task", () => {
         id: "task-1",
         title: "Implement",
         status: "not_started",
-        delegated_to: null,
-        waiting_on: null,
         blocked_by: null,
         unblock_when: null,
         next_action: null,
@@ -37,8 +34,8 @@ test("decideStartWorkContinuation preserves ask-user note from artifact resoluti
       kind: "ask-user",
       reason: "Multiple unfinished plans remain.",
       candidates: [
-        { planPath: ".ramblings/plans/a.md", checklistPath: null, handoffPath: null, readyCheckPath: null },
-        { planPath: ".ramblings/plans/b.md", checklistPath: null, handoffPath: null, readyCheckPath: null },
+        { planPath: ".ramblings/plans/a.md", checklistPath: null, handoffPath: null },
+        { planPath: ".ramblings/plans/b.md", checklistPath: null, handoffPath: null },
       ],
     },
   })

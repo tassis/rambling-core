@@ -1,209 +1,56 @@
 # Commands
 
-This page is the command reference for ramblings.
+`ramblings-core` exposes only the retained core command set. This is the active public surface.
 
-Use it when you already know you want a command-first entrypoint and need the quickest way to start the right workflow.
+- `office-hours`
+- `write-brief`
+- `write-plan`
+- `start-work`
+- `handoff`
+- `resume-from-handoff`
+- `archive`
 
-For deeper workflow routing across skills, see [`docs/skills.md`](skills.md).
+The canonical lifecycle remains: brainstorm → brief → plan → execute → handoff/resume → archive.
 
-## office-hours
+## `office-hours`
 
-Use for early discussion, scope discovery, and feature or product shaping.
+Early discovery and open-ended shaping conversation before creating artifacts.
 
-## start-feature
+## `write-brief`
 
-Use for a substantial feature or project workflow that should move from discussion through brief-first planning, and only escalate to a plan when explicitly requested or the work is clearly implementation-ready for direct planning.
+Capture converged discussion in a structured brief.
 
-This is the primary umbrella entrypoint for end-to-end lifecycle work.
+## `write-plan`
 
-## challenge-me
+Turn an approved direction into implementation tasks and plan artifacts.
 
-Use for structured multi-perspective challenge of the current idea, brief, plan, or in-progress change.
+## `start-work`
 
-This command routes through the shared `Reviewer` agent (`@reviewer`) for a structured multi-perspective review panel.
+Execute or resume an existing plan from project-root `.ramblings/` artifacts.
 
-For panel reviews, it should spawn one independent reviewer invocation per selected lens and synthesize only after those lane-specific positions are explicit.
+`start-work` is the execution entrypoint and prefers checklist-backed execution state.
 
-Use `challenge-me` for multi-lens review panels, not for ordinary single-lens review requests.
+## `handoff`
 
-## grill-me
+Create compact transfer context for another session or later continuation.
 
-Use for one-question-at-a-time pressure testing of the current idea, brief, plan, or approach.
+- Creates an append-only handoff artifact under `.ramblings/handoffs/`.
+- Captures objective, status, and next action in compact form.
 
-This command stays question-driven rather than using the shared `Reviewer` panel flow.
+## `resume-from-handoff`
 
-For ordinary direct single-lens review, prefer using `@reviewer` with the requested angle explicitly instead of reaching for a panel workflow.
+Restore execution context from an existing handoff artifact and continue safely.
 
-Examples:
+- Selects by `work_unit` first, then broader `topic`, with ambiguity routed to explicit operator confirmation.
 
-- `@reviewer` — review this plan from the product perspective
-- `@reviewer` — review this change from the engineering perspective
-- `@reviewer` — review this feature from the QA perspective
+## `archive`
 
-## careful
+Perform explicit cleanup and archive consolidation once work is no longer an active execution candidate.
 
-Use to shift into a more conservative, high-risk workflow posture.
+`/start-work` keeps a narrow auto-cleanup path for safe completed/cancelled units at entry; broader ambiguity/conflict cleanup remains operator-driven in `archive`.
 
-This is the primary entrypoint for careful/high-risk posture.
+## Verification and specialization
 
-## handoff
+Verification discipline (evidence requirements, completion criteria) is a core concern here.
 
-Use to write transferable context for a future session or another agent.
-
-Create a compact dated artifact under `.ramblings/handoffs/`.
-
-- Keep handoffs append-only; do not overwrite a single `current.md` file.
-- New handoffs should include compact frontmatter metadata: `topic`, `work_unit`, `references`, optional `supersedes`, and `status`.
-- Keep the body reference-first rather than duplicating full briefs or plans.
-
-## resume-from-handoff
-
-Use to continue safely from the newest relevant handoff artifact.
-
-Selection order:
-
-1. exact `work_unit` match when available;
-2. broader `topic` match;
-3. exclude handoffs marked `superseded`, `stale`, or invalidated by newer source artifacts;
-4. prefer explicit `supersedes` relationships;
-5. then prefer the newest remaining dated handoff;
-6. verify against referenced source artifacts before trusting it;
-7. if multiple candidates remain equally plausible, ask the user.
-
-Examples:
-
-- Same topic, different work units:
-  - `2026-06-18-ultrawork-status-handoff.md` with `work_unit: ultrawork-runtime-hardening`
-  - `2026-06-19-ultrawork-status-handoff.md` with `work_unit: ultrawork-archive-cleanup`
-  - If the requested continuation is runtime hardening, prefer the exact `work_unit` match even if another ultrawork handoff is newer.
-- Explicit supersession:
-  - `2026-06-18-ultrawork-status-handoff.md`
-  - `2026-06-20-ultrawork-runtime-handoff.md` with `supersedes: 2026-06-18-ultrawork-status-handoff.md`
-  - Prefer the newer superseding handoff after verifying its references.
-- Ambiguity stop:
-  - two handoffs imply the same work unit,
-  - neither supersedes the other,
-  - and current plan/checklist evidence does not clearly disambiguate.
-  - In that case, stop and ask the user instead of guessing.
-
-## retro
-
-Use to capture lessons learned after meaningful work.
-
-## investigate
-
-Use to understand how an existing system or flow works before deciding next action.
-
-## ready-check
-
-Use to make an evidence-based readiness call before claiming work is ready for review, validation, completion, or archive.
-
-This is the command-first readiness gate.
-
-## archive
-
-Use for explicit cleanup and archive work once a work unit is no longer an active execution candidate.
-
-Use this when you want operator-driven archive cleanup or consolidation. For simple entry-time cleanup of safely archiveable completed/cancelled work units, `/start-work` may handle it automatically.
-
-## write-brief
-
-Use to turn converged discussion into a written brief.
-
-## write-plan
-
-Use to turn an approved direction into an implementation plan when the user explicitly wants a plan or the work is clearly implementation-ready / direct landing is accepted.
-
-## start-work
-
-Use to start or resume execution from the active unfinished plan under the current project's root `.ramblings/` directory.
-
-The intended contract is for `/start-work` to route into a dedicated execution orchestrator rather than the planning-only `conductor`.
-
-`start-work` should prefer a machine-readable YAML checklist under `.ramblings/checklists/` as the durable execution-state source of truth when one exists.
-
-The plugin also exposes small deterministic custom tools for `start-work` so agents can resolve artifacts and write checklist state without reimplementing helper logic.
-
-Use the repo-prefixed helper tool names when calling them directly:
-
-- `ramblings_start_work_resolve`
-- `ramblings_start_work_record_terminal`
-- `ramblings_start_work_reconcile_and_rerun`
-- `ramblings_start_work_record_blocked`
-- `ramblings_start_work_rerun_continuation`
-
-Minimum helper metadata contract:
-
-- `ramblings_start_work_resolve`
-  - stable metadata fields: `ok`, `artifactResolutionKind`, `checklistPath`, `planPath`, optional `taskSelectionKind`, `continuationKind`, `activeTaskId`, `reason`, `note`, `archiveActions`
-- `ramblings_start_work_record_blocked`
-  - stable metadata fields: `ok`, `taskId`, `checklistPath`, `executionState`, `blockedBy`, `unblockWhen`, `nextAction`
-- `ramblings_start_work_record_terminal`
-  - stable metadata fields: `ok`, `status`, `taskId`, `checklistPath`, `executionState`, `delegationStatus`, `message`
-  - `ok: true` means the helper completed successfully (`recorded` or idempotent `already-handled`)
-  - `ok: false` means the helper detected a workflow failure (`mismatch` or internal `error`); these no longer coexist with `ok: true`
-- `ramblings_start_work_reconcile_and_rerun`
-  - stable metadata fields: `ok`, `taskId`, `checklistPath`, `executionState`, `continuationKind`, `activeTaskId`, `reason`, `note`
-- `ramblings_start_work_rerun_continuation`
-  - stable metadata fields: `ok`, `checklistPath`, `planPath`, `continuationKind`, `activeTaskId`, `reason`, `note`
-- checklist read errors should report one of: `CHECKLIST_NOT_FOUND`, `CHECKLIST_PARSE_FAILED`, or `CHECKLIST_VALIDATION_FAILED`
-
-Within this framework, `start-work` is the primary execution surface. Plans make work executable, checklists keep execution state durable, and the retained helper path covers the non-trivial mechanics without claiming a full autonomous scheduler. Direct checklist edits remain acceptable for simple begin/complete transitions when no delegation, terminal-result handling, or continuation mechanics are involved.
-
-The currently supported runtime boundary is **post-completion / half-automatic re-entry**, not a guaranteed pre-stop auto-resume callback. Completion may become observable, terminal state may be recorded and reconciled, and continuation may be rerun from persisted checklist state. When that automatic re-entry path is unavailable or insufficient, fall back to an explicit `/start-work` resume or equivalent session continuation.
-
-Dispatch policy for `/start-work` is **subagent-first** when the next slice is bounded, specialist-shaped, and independently finishable. Keep orchestrator-direct work narrow:
-
-- control-plane and artifact-state operations
-- terminal-result reconciliation
-- verification
-- very small synchronous checks
-- no-viable-delegation cases where delegation overhead clearly exceeds the work
-
-Do not treat orchestrator self-parallelism as the default replacement for specialist delegation, and do not describe the current helper path as a full scheduler.
-
-On entry, `/start-work` should evaluate completed and cancelled work units for cleanup before resuming unfinished work. Safe cleanup candidates are auto-archived first, active-area plan/checklist copies are removed, and discovery reruns only after that cleanup phase finishes. Ambiguous, source-of-truth-conflicted, or otherwise unsafe cleanup cases must stop at `ask-user` rather than silently continuing unfinished work.
-
-Recommended YAML execution-state shape:
-
-```yaml
-plan: .ramblings/plans/YYYY-MM-DD-topic.md
-active_task: task-2
-execution_state: running
-delegations:
-  - name: repo-discovery
-    role: explorer
-    task_id: ses_xxx
-    task_ref: task-2
-    status: running
-tasks:
-  - id: task-2
-    title: Review helper-tool output contract examples
-    status: in_progress
-    delegated_to:
-      role: reviewer
-      task_id: ses_xxx
-    waiting_on: lane_completion
-    blocked_by: null
-    unblock_when: null
-    next_action: wait for terminal hook
-    last_update: resolver lane dispatched
-```
-
-Rules:
-
-- `status` remains the primary task state; do not replace it with `delegated`.
-- Top-level `delegations` may record participating specialist sessions for resume/reconcile support.
-- Delegation and waiting should be expressed as annotations such as `delegated_to` and `waiting_on`.
-- The tool-backed path is reserved for artifact resolution, terminal-result recording, terminal reconciliation + rerun, blocker recording, and continuation decisions; simple begin/complete checklist state changes may be written directly only when those mechanics are not involved.
-- First iteration scope assumes one active task and at most one active delegated lane per task.
-- First iteration scope is sequential by default and does not assume routine same-type parallel delegation.
-- Recommended registry lifecycle: `running` → `terminal_unreconciled` → `terminal_reconciled`, with `cancelled_obsolete` reserved for stale-lane cleanup after verified terminal completion.
-
-Active discovery should ignore `.ramblings/archive/**`; archived plans are historical records, not execution candidates.
-
-Archive only after the work is truly complete enough that no active execution should resume from it.
-
-`ready-check` is a dedicated command-first readiness gate for evidence-based readiness claims.
-
-`archive` is a dedicated operator-facing cleanup/consolidation command for completed work units and source-of-truth cleanup. `/start-work` now owns the narrow startup path of auto-archiving safely-packagable completed/cancelled work units before unfinished execution resumes; broader cleanup, consolidation, and ambiguity resolution still belong to the explicit `archive` command.
+Specialized workflow methods (review lenses, testing strategy modes, triage, investigation/debug, readiness/reporting packs, and other method-focused workflows) are intentionally outside `ramblings-core` and are not part of this command set.

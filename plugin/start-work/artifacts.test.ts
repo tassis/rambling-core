@@ -9,42 +9,28 @@ test("resolveStartWorkArtifacts archives one ready completed work unit at entry 
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-artifacts-test-"))
   await mkdir(path.join(projectRoot, ".ramblings", "plans"), { recursive: true })
   await mkdir(path.join(projectRoot, ".ramblings", "checklists"), { recursive: true })
-  await mkdir(path.join(projectRoot, ".ramblings", "debug"), { recursive: true })
 
   await writeFile(path.join(projectRoot, ".ramblings", "plans", "2026-06-19-complete.md"), "# Complete\n**Status:** complete\n")
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-complete.yaml"), `plan: .ramblings/plans/2026-06-19-complete.md
 active_task: null
 execution_state: done
-delegations: []
 tasks:
   - id: task-1
     title: Done
     status: complete
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
     last_update: null
 `)
-  await writeFile(path.join(projectRoot, ".ramblings", "debug", "2026-06-19-complete-ready-check.md"), `## Ready Check
-
-**Status:** ready
-
-.ramblings/plans/2026-06-19-complete.md
-`)
-
   await writeFile(path.join(projectRoot, ".ramblings", "plans", "2026-06-19-active.md"), "# Active\n**Status:** not started\n")
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-active.yaml"), `plan: .ramblings/plans/2026-06-19-active.md
 active_task: null
 execution_state: running
-delegations: []
 tasks:
   - id: task-1
     title: Todo
     status: not_started
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -64,30 +50,20 @@ test("resolveStartWorkArtifacts asks user when a linked handoff still claims act
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-handoff-conflict-test-"))
   await mkdir(path.join(projectRoot, ".ramblings", "plans"), { recursive: true })
   await mkdir(path.join(projectRoot, ".ramblings", "checklists"), { recursive: true })
-  await mkdir(path.join(projectRoot, ".ramblings", "debug"), { recursive: true })
   await mkdir(path.join(projectRoot, ".ramblings", "handoffs"), { recursive: true })
 
   await writeFile(path.join(projectRoot, ".ramblings", "plans", "2026-06-19-complete.md"), "# Complete\n**Status:** complete\n")
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-complete.yaml"), `plan: .ramblings/plans/2026-06-19-complete.md
 active_task: null
 execution_state: done
-delegations: []
 tasks:
   - id: task-1
     title: Done
     status: complete
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
     last_update: null
-`)
-  await writeFile(path.join(projectRoot, ".ramblings", "debug", "2026-06-19-complete-ready-check.md"), `## Ready Check
-
-**Status:** ready
-
-.ramblings/plans/2026-06-19-complete.md
 `)
   await writeFile(path.join(projectRoot, ".ramblings", "handoffs", "2026-06-19-complete.md"), `.ramblings/plans/2026-06-19-complete.md
 status: active
@@ -104,42 +80,28 @@ test("resolveStartWorkArtifacts auto-archives multiple safe completed/cancelled 
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), "ramblings-multi-cleanup-test-"))
   await mkdir(path.join(projectRoot, ".ramblings", "plans"), { recursive: true })
   await mkdir(path.join(projectRoot, ".ramblings", "checklists"), { recursive: true })
-  await mkdir(path.join(projectRoot, ".ramblings", "debug"), { recursive: true })
 
   await writeFile(path.join(projectRoot, ".ramblings", "plans", "2026-06-19-complete.md"), "# Complete\n**Status:** complete\n")
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-complete.yaml"), `plan: .ramblings/plans/2026-06-19-complete.md
 active_task: null
 execution_state: done
-delegations: []
 tasks:
   - id: task-1
     title: Done
     status: complete
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
     last_update: null
 `)
-  await writeFile(path.join(projectRoot, ".ramblings", "debug", "2026-06-19-complete-ready-check.md"), `## Ready Check
-
-**Status:** ready
-
-.ramblings/plans/2026-06-19-complete.md
-`)
-
   await writeFile(path.join(projectRoot, ".ramblings", "plans", "2026-06-19-cancelled.md"), "# Cancelled\n**Status:** cancelled\n")
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-cancelled.yaml"), `plan: .ramblings/plans/2026-06-19-cancelled.md
 active_task: null
 execution_state: cancelled
-delegations: []
 tasks:
   - id: task-1
     title: Cancelled
     status: cancelled
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -150,13 +112,10 @@ tasks:
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-active.yaml"), `plan: .ramblings/plans/2026-06-19-active.md
 active_task: null
 execution_state: running
-delegations: []
 tasks:
   - id: task-1
     title: Todo
     status: not_started
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -183,13 +142,10 @@ test("resolveStartWorkArtifacts asks user before continuing when a cancelled cle
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-cancelled.yaml"), `plan: .ramblings/plans/2026-06-19-cancelled.md
 active_task: task-1
 execution_state: cancelled
-delegations: []
 tasks:
   - id: task-1
     title: Cancelled but unresolved
     status: cancelled
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
@@ -200,13 +156,10 @@ tasks:
   await writeFile(path.join(projectRoot, ".ramblings", "checklists", "2026-06-19-active.yaml"), `plan: .ramblings/plans/2026-06-19-active.md
 active_task: null
 execution_state: running
-delegations: []
 tasks:
   - id: task-1
     title: Todo
     status: not_started
-    delegated_to: null
-    waiting_on: null
     blocked_by: null
     unblock_when: null
     next_action: null
