@@ -7,7 +7,8 @@ import {
 
 export const startWork = {
   description: "Start or resume execution from the active unfinished plan, after archive-first cleanup of completed/cancelled work",
-  template: `Use ramblings-implementing-plans. Enter execution mode for the current project's root .ramblings/ artifacts.
+  template: `Role: execution-entry contract for /start-work.
+Use ramblings-implementing-plans in project-root .ramblings/ only.
 
 ${schedulerReminder}
 
@@ -15,65 +16,48 @@ ${hookReturnReminder}
 
 ${executionOrchestratorContract}
 
-Treat this as /start-work semantics:
-- start or resume; do not assume this always starts from scratch
-- locate the project-root .ramblings/ directory only
-- identify the active unfinished YAML checklist/plan safely before editing
-- first evaluate completed and cancelled work units for startup archive cleanup before selecting unfinished work
-- if completed/cancelled work units are safely archive-eligible, archive them first, clean the active-area copies, and only then continue unfinished work
-- if completed/cancelled cleanup is unsafe, ambiguous, missing required readiness evidence, or conflicts on source of truth, stop at explicit ask-user rather than continuing unfinished work
-- ignore .ramblings/archive/** during active plan/checklist discovery; archived artifacts are historical records, not runnable candidates
-- prefer a separate YAML checklist/execution-state artifact over inline plan status
-- treat handoffs as hints, not stronger than an active checklist
-- if multiple unfinished plans are plausible, do not guess; ask the user to choose
-- if no unfinished plan can be identified safely, stop and tell the user to create or choose a plan explicitly
+Core:
+- start or resume; do not assume a fresh run.
+- archive-first startup cleanup is required: completed/cancelled units are archived (and active-area copies cleaned) before unfinished execution resumes.
+- if archive-first cleanup is unsafe, ambiguous, conflicts with source-of-truth, or cannot be validated, stop and ask user.
+- ignore .ramblings/archive/** during active discovery; treat it as historical record only.
 
-${firstIterationSequentialPolicy}
+Source-of-truth:
+- locate the project-root .ramblings/ checklist/plan artifact only.
+- choose checklist first, then plan status, then handoff when they disagree.
+- if multiple active unfinished candidates or an unresolved conflict exists, ask user.
 
-Source-of-truth contract:
-- when checklist, plan status, and handoff disagree, prefer checklist first, then plan status, then handoff
-- if artifact conflict cannot be resolved safely, stop and ask the user
+Execution:
+- ${firstIterationSequentialPolicy}
+- continue only when an active unfinished plan has runnable, independent work.
+- work in plan order unless the plan explicitly allows another independent runnable lane.
+- resolve dependencies before specialist dispatch; keep orchestrator-direct work narrow (control-plane, reconcile/verification, tiny synchronous checks, or no-viable-delegation).
+- prefer subagent-first execution for bounded, independent specialist tasks.
+- when preparing delegated work, plan task tags and capability hints may inform soft skill suggestions, but do not treat them as hard routing requirements.
 
-Execution contract:
-- if an active unfinished plan exists and a runnable task is available, continue; do not idle
-- work task-by-task in plan order unless the plan explicitly allows another independent runnable task
-- plan lanes/dependencies before dispatching specialist work
-- prefer subagent-first execution for bounded, specialist-shaped, independently finishable work
-- dispatch only independent work
-- keep orchestrator-direct work narrow: control-plane, terminal reconciliation, verification, very small synchronous checks, or no-viable-delegation cases
-- do not turn orchestrator self-parallelism into a substitute for ordinary discovery, research, review, or implementation delegation
-- do not poll running jobs or use partial running output as completion evidence
-- reconcile terminal results before verification
-- final verification is orchestrator-owned after reconciliation
-- writing code is not enough to finish a task; verify, re-check completion criteria, then update the project-root .ramblings/ plan/checklist state
-- if execution cannot safely continue, enter blocked or replanning explicitly instead of guessing
+Hard rules:
+- no polling, no partial-output advancement, no dependent-work advancement without completion.
+- reconcile terminal hooks first, verify second, then pick exactly one continuation outcome.
+- do not treat code edits as completion: verify then write .ramblings/ state.
+- if execution is not safe, emit Blocked or Replanning explicitly.
 
 ${continuationOutcomeContract}
 
-Waiting contract:
-- if required background work is still running and no other independent runnable task is available, enter a valid waiting state rather than blocked or complete
-- while waiting, do not poll running jobs, do not use partial output as completion evidence, and do not advance dependent work
+Waiting / blocked / replanning / done / ask-user:
+- Continue: run an active unfinished runnable task when available; do not idle in this state.
+- Waiting: use only when required background work runs and no independent task is runnable.
+- Blocked: record Blocked by / Unblock when / Next action.
+- Replanning: record Replan reason, What changed, Plan sections to revise, Next planning action.
+- Done: only after verification success and all required plan/checklist state is written back; no tasks remain blocked or in progress and no handoff claims remaining execution work.
+- Ask-user: when source-of-truth cannot be resolved safely, no valid unfinished plan exists, or continuation would be unsafe.
 
-Blocked contract:
-- record Blocked by, Unblock when, and Next action
-
-Replanning contract:
-- if the plan itself is no longer a safe execution contract, record Replan reason, What changed, Plan sections to revise, and Next planning action, then route back to planning
-
-Completion rules:
-- do not declare a task complete until verification succeeds and plan/checklist state is written back
-- do not declare the overall plan complete until all tasks are complete, no tasks remain blocked or in progress, required verification is done, and current handoffs do not claim remaining execution work
-
-State-writeback contract:
-- execution-state updates must be written only to the project-root .ramblings/ artifacts that own the current plan state
+State-writeback:
+- write execution-state only to project-root .ramblings/ artifacts that own the active plan.
 
 Tool contract:
-- when using the plugin's deterministic helper tools, use the repo-prefixed names:
-  - \`ramblings_start_work_resolve\`
-  - \`ramblings_start_work_record_terminal\`
-  - \`ramblings_start_work_reconcile_and_rerun\`
-  - \`ramblings_start_work_record_blocked\`
-  - \`ramblings_start_work_rerun_continuation\`
-- simple begin/complete checklist state transitions may still be written directly when no delegation, terminal-result handling, or continuation mechanics are involved
-- use the helper tools for artifact resolution, terminal-result recording, terminal reconciliation + rerun, blocker recording, and continuation decisions`
+- use repo-prefixed helper tools as needed:
+  - ramblings_start_work_resolve
+  - ramblings_start_work_reconcile_and_rerun
+  - ramblings_start_work_record_blocked
+- simple checklist begin/complete transitions may be direct only when no delegation, terminal-result handling, or continuation mechanics are involved.`
 }

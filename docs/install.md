@@ -8,7 +8,7 @@ Add this to `opencode.json` and restart OpenCode:
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "ramblings@git+https://github.com/tassis/ramblings.git"
+    "ramblings-core@git+https://github.com/tassis/ramblings.git"
   ]
 }
 ```
@@ -26,13 +26,15 @@ If you are developing from a local checkout, use a direct plugin path instead:
 }
 ```
 
-The plugin will:
+This package is `ramblings-core` and exposes only the core surface:
 
-- register `<repo>/skills`
-- inject the bundled commands
-- inject the `conductor` planning agent
+- register `/skills` from this repo
+- register core commands: `office-hours`, `write-brief`, `write-plan`, `start-work`, `handoff`, `resume-from-handoff`, `archive`
+- register the `conductor` planning agent
 
 ## Notes
 
 - If you already define a command with the same name in your own config, this plugin leaves your command untouched.
 - Restart OpenCode after config changes.
+
+Note: since this is a focused core package, this refactor does not provide compatibility aliases or compatibility shims for removed command surfaces.

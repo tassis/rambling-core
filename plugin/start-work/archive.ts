@@ -7,7 +7,6 @@ import type {
   StartWorkArchiveCandidate,
   StartWorkArchiveEligibilityInput,
   StartWorkChecklistState,
-  StartWorkReadyCheckStatus,
 } from "./types"
 
 const RAMBLINGS_DIR = ".ramblings"
@@ -85,13 +84,6 @@ export function decideSimplePathArchiveEligibility(input: StartWorkArchiveEligib
     }
   }
 
-  if (hasEffectivelyActiveDelegation(checklist.delegations ?? [])) {
-    return {
-      kind: "ask-user",
-      reason: "Checklist still contains an effectively active delegation.",
-    }
-  }
-
   if (input.hasConsolidationAmbiguity) {
     return {
       kind: "ask-user",
@@ -113,28 +105,14 @@ export function decideSimplePathArchiveEligibility(input: StartWorkArchiveEligib
     }
   }
 
-  if (input.readyCheckStatus === "ready") {
-    return {
-      kind: "auto-archive",
-      reason: "Checklist is complete and ready-check evidence is ready.",
-    }
-  }
-
-  if (input.readyCheckStatus === "ready-for-review" || input.readyCheckStatus === "ready-for-user-validation" || input.readyCheckStatus === "not-ready") {
-    return {
-      kind: "ask-user",
-      reason: "Existing ready-check evidence is not ready for archive auto-approval.",
-    }
-  }
-
   return {
-    kind: "defer",
-    reason: "No ready-check evidence exists; conservative fallback is to defer rather than auto-archive.",
+    kind: "auto-archive",
+    reason: "Checklist execution and task state indicate this unit is complete and archive-safe.",
   }
 }
 
 export function findSimplePathArchiveCandidate(
-  candidates: Array<{ candidate: StartWorkArchiveCandidate; checklist: StartWorkChecklistState; readyCheckStatus: StartWorkReadyCheckStatus | null; handoffClaimsActiveWork: boolean }>,
+  candidates: Array<{ candidate: StartWorkArchiveCandidate; checklist: StartWorkChecklistState; handoffClaimsActiveWork: boolean }>,
 ): StartWorkArchiveDiscoveryResult {
   if (candidates.length === 0) {
     return { kind: "none", reason: "No completed or cancelled work units were found for archive evaluation." }
@@ -146,7 +124,6 @@ export function findSimplePathArchiveCandidate(
     const decision = decideSimplePathArchiveEligibility({
       candidate: entry.candidate,
       checklist: entry.checklist,
-      readyCheckStatus: entry.readyCheckStatus,
       handoffClaimsActiveWork: entry.handoffClaimsActiveWork,
     })
 
@@ -206,14 +183,6 @@ export async function performSimplePathArchive(
     await copyFile(checklistAbsolutePath, archivedChecklistAbsolutePath)
     archivedFiles.push(toProjectRelative(projectRoot, archivedChecklistAbsolutePath))
 
-    if (candidate.readyCheckPath) {
-      const readyCheckAbsolutePath = toAbsoluteProjectPath(projectRoot, candidate.readyCheckPath)
-      const archivedReadyCheckAbsolutePath = path.join(archiveDir, "ready-check.md")
-      if (await copyOptionalFile(readyCheckAbsolutePath, archivedReadyCheckAbsolutePath)) {
-        archivedFiles.push(toProjectRelative(projectRoot, archivedReadyCheckAbsolutePath))
-      }
-    }
-
     if (candidate.handoffPath) {
       const handoffAbsolutePath = toAbsoluteProjectPath(projectRoot, candidate.handoffPath)
       const handoffText = await readTextSafe(handoffAbsolutePath)
@@ -236,12 +205,6 @@ export async function performSimplePathArchive(
     await rm(checklistAbsolutePath)
     removedActiveFiles.push(candidate.checklistPath)
 
-    if (candidate.readyCheckPath && archivedFiles.some((filePath) => filePath.endsWith("ready-check.md"))) {
-      const readyCheckAbsolutePath = toAbsoluteProjectPath(projectRoot, candidate.readyCheckPath)
-      await rm(readyCheckAbsolutePath)
-      removedActiveFiles.push(candidate.readyCheckPath)
-    }
-
     if (candidate.handoffPath && archivedFiles.some((filePath) => filePath.endsWith("handoff.md"))) {
       const handoffAbsolutePath = toAbsoluteProjectPath(projectRoot, candidate.handoffPath)
       await rm(handoffAbsolutePath)
@@ -258,11 +221,6 @@ export async function performSimplePathArchive(
     removedActiveFiles,
   }
 }
-
-function hasEffectivelyActiveDelegation(delegations: NonNullable<StartWorkArchiveEligibilityInput["checklist"]>["delegations"]) {
-  return (delegations ?? []).some((delegation) => delegation.status === "running" || delegation.status === "terminal_unreconciled")
-}
-
 function createArchiveSummary(
   candidate: StartWorkArchiveCandidate,
   checklist: StartWorkChecklistState,
@@ -276,9 +234,9 @@ function createArchiveSummary(
     "",
     `- \`${path.basename(candidate.planPath, ".md")}\``,
     "",
-    "## Archive readiness",
+    "## Archive outcome",
     "",
-    "- ready",
+    "- archived",
     "",
     "## Why archived",
     "",

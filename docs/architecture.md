@@ -1,106 +1,111 @@
 # Architecture
 
-This page explains the internal structure behind the ramblings plugin.
+`ramblings-core` is the execution-focused bounded core package for OpenCode workflow.
 
-Read this after README if you want the implementation model, surface boundaries, or plugin/runtime contract details.
+Read this after the README if you want the internal model and runtime boundary.
+
+## Core boundary
+
+`ramblings-core` owns a compact workflow loop and deterministic execution control:
+
+- brainstorm → brief → plan → execute
+- handoff/resume continuity
+- archive hygiene
+- core verification policy (observable success evidence required before completion)
+
+It does **not** own specialized workflow methods such as review/challenge packs, investigation/debugging, triage, readiness/reporting, testing-strategy modes, prototype workflows, or posture/method packs. Those belong to separate follow-on workflow packages.
+
+Those follow-on packages are expected to integrate through compact extension shapes rather than by redefining core lifecycle semantics:
+
+- **phase replacement**
+- **phase overlay**
+- **delegated posture**
+- **route-out workflow**
 
 ## Layers
 
 ### `skills/`
 
-Contains the actual `ramblings-*` skills. These define workflow guidance such as brainstorming, brief writing, ready checks, debugging, review, and challenge workflows.
+Contains only the core skills registered by this package:
 
-See `docs/skills.md` for the current taxonomy, routing rules, and overlap guide.
+- `ramblings-brainstorming`
+- `ramblings-brief-writing`
+- `ramblings-writing-plans`
+- `ramblings-implementing-plans`
+- `ramblings-handoff`
+- `ramblings-resume-from-handoff`
+- `ramblings-archive`
 
 ### `plugin/`
 
-Contains an OpenCode plugin that registers this repo's `skills/` path, injects optional commands into live config, injects the custom `conductor` planning agent, and exposes a small top-level custom-tool surface for `start-work`.
+Contains the OpenCode plugin registration and core command/tool wiring:
 
-## Workflow lifecycle
+- injects only core commands
+- registers the `conductor` planning agent
+- exposes only the repo-prefixed `start-work` helper tools
 
-The intended framework lifecycle is:
+## Default lifecycle
 
-1. discussion / shaping
-2. brief writing / converged discussion capture
-3. planning
-4. execution
-5. review
-6. handoff / ready-check
-7. archive / cleanup
+Default lifecycle is explicitly:
 
-These are not separate products. They are different phases of the same workflow framework.
+1. brainstorm
+2. brief
+3. plan
+4. execute
+5. handoff/resume
+6. archive
 
-## Design decisions
+This lifecycle is implemented around durable project-root `.ramblings/` artifacts and YAML checklist state.
 
-- The plugin does **not** inject a global workflow bootstrap.
-- The plugin does **not** override user-defined commands of the same name.
-- The plugin does **not** override a user-defined `conductor` agent if one already exists.
-- The plugin does **not** perform git actions.
-- Commands are lightweight prompt shortcuts that encourage the right `ramblings-*` skill usage.
-- `conductor` is the repo-owned planning surface; native `@plan` behavior remains outside this repo's contract.
-- `Reviewer` / `reviewer` is the shared callable review agent; reviewer persona still comes primarily from the selected review skill.
-- `start-work` has a small tool-backed mechanical surface for deterministic state operations, supports post-completion / half-automatic re-entry, but it is not a full runtime scheduler.
-- `/start-work` now treats archive cleanup as a startup gate: it resolves safely-packagable completed/cancelled work units first, archives them under `.ramblings/archive/`, cleans active-area copies, and only then resumes unfinished work.
-- `ready-check` and `archive` are command-first lifecycle entrypoints layered on top of the existing skills.
-- The plugin-exposed helper tools use repo-prefixed names (`ramblings_start_work_*`) as the supported runtime surface.
+`handoff`, `resume-from-handoff`, and `archive` are canonical default lifecycle phases, not optional extras.
 
-## Surface taxonomy
+### Verification policy
 
-- **skill**: capability, context, method, persona, and boundary definition
-- **agent**: stable role surface with explicit permissions or reusable operational posture
-- **tool**: deterministic operation callable by an agent
-- **command**: convenience entrypoint into the right workflow surface
+- Completion is a checkpoint tied to explicit evidence.
+- Code edits alone do not satisfy completion.
+- The package does not mandate one implementation ideology (for example, no mandated TDD, no mandatory careful-mode sequencing, no required review posture).
 
-This repo intentionally uses all four surfaces together rather than collapsing everything into one mechanism.
+## Runtime surface and guardrails
 
-## Stable vs evolving surfaces
+- `start-work` is the execution entrypoint and handles continuation using checklist state, startup archive cleanup, and deterministic helper decisions.
+- Commands are convenience entrypoints, not a full runtime scheduler.
+- `conductor` remains a planning surface and is not used as a substitute execution orchestrator; it may draft/normalize an initial checklist before execution starts.
+- The plugin avoids global bootstrap behavior and does not override existing user-defined commands/agents of the same name.
+- Non-core workflow methods and specialist packs are kept out of this package’s default surface.
 
-More stable at the conceptual level:
+When installed, extension packs should prefer specialized-first routing only when the match is clear; otherwise the generic core phase remains the fallback.
 
-- project-root `.ramblings/` artifacts
-- `start-work` as execution entrypoint
-- review / handoff / ready-check / archive as workflow phases
-- `Reviewer` as the shared callable review agent surface
+### Execution-core contract
 
-More likely to evolve internally:
+`start-work` in `ramblings-core` assumes only:
 
-- exact helper layout
-- exact tool list
-- exact agent prompt wording
-- exact command wording
+- plan
+- checklist / execution-state artifact
+- compact handoff/resume continuity
+- archive hygiene
+- verification evidence policy
 
-## Current command-surface boundary
+Execution requires the checklist artifact to exist before task execution proceeds; the plan itself is the semantic contract and does not carry live execution state. The checklist is therefore the current-state execution contract while execution is active.
 
-This repo's command hardening is currently contract-driven, not runtime-engine-driven.
+Checklist artifacts should stay compact. Optional task fields such as `next_action`, `last_update`, `blocked_by`, and `unblock_when` may be omitted entirely when they do not add current-state value, rather than being serialized as `null` placeholders.
 
-- `handoff`, `resume-from-handoff`, and `start-work` can define artifact rules, selection ladders, and stop conditions in their prompt surfaces.
-- `start-work` is now gaining helper-backed control logic under `plugin/start-work/` plus top-level plugin custom tools for artifact resolution, structured blocker recording, and continuation decisions, while simple checklist begin/complete transitions may still be written directly.
-- The supported runtime path is currently **post-completion / half-automatic re-entry**: completion can become observable, checklist state can be reconciled, and continuation can be rerun from persisted state.
-- These command surfaces still do **not** provide a full standalone runtime scheduler or executor, and they do **not** claim a first-class pre-stop auto-reenter callback.
-- Determinism currently comes from clearer artifact contracts plus explicit helper-backed control rules and a small set of decision/validation helpers, not from a deeper runtime engine.
+`conductor` drafts or normalizes the initial checklist; the orchestrator updates it as work progresses.
 
-## Start-work execution boundary
+It does not require `ready-check`, review workflows, investigation/debugging helper packs, or method/posture systems to function as core execution.
 
-The intended `start-work` model is:
+Core continuity behavior is intentionally compact:
 
-- route `/start-work` to a dedicated execution orchestrator;
-- do **not** reuse the planning-only `conductor` for execution;
-- prefer subagent-first execution for bounded, specialist-shaped, independently finishable work;
-- keep orchestrator-direct work narrow: control-plane operations, terminal reconciliation, verification, and very small synchronous checks;
-- keep first-iteration execution single-task, single-lane, and sequential by default;
-- treat YAML checklists under `.ramblings/checklists/` as the durable execution-state source of truth.
+- recover the task objective quickly
+- recover current status quickly
+- recover execution phase quickly
+- route back to the plan/checklist source of truth (plan = intent and risk context, checklist = live current-state)
 
-If the host/plugin environment cannot yet hard-bind `/start-work` to a dedicated execution agent, the command surface should still behave as though that execution-orchestrator contract exists.
+Core archive behavior is intentionally compact:
 
-If no reliable automatic re-entry hook is available at completion time, the fallback remains explicit `/start-work` resume or equivalent session continuation from the persisted checklist state.
+- safely package completed/cancelled work units
+- keep archived artifacts out of active discovery
+- perform safe startup cleanup so discovery remains focused
 
-Consider a deeper runtime/helper implementation later if:
+## Installation and identity
 
-- multi-handoff ambiguity remains common in real usage;
-- delegated execution still drifts even with YAML checklist + helper-backed control logic;
-- prompt-level selection still produces inconsistent results;
-- or the host/plugin environment gains a better structured mechanism for artifact discovery and ranking.
-
-## Installation model
-
-The repo supports both git-backed plugin installation and direct local plugin-path development. The layout keeps the same `skills/` and `plugin/` split in either case so the command surface and skill paths stay stable.
+Package identity is `ramblings-core`. Plugin wiring and exposed runtime are intentionally narrow and core-only, whether installed via git spec or local plugin path.

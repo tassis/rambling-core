@@ -5,157 +5,77 @@ description: Archive completed or near-completed work units, consolidate multipl
 
 # Ramblings Archive
 
-Use this skill when the job is整理, not active feature delivery.
+Use only for cleanup after work is done (or near-done), not active delivery.
 
-This workflow is for completed or near-completed work units that need:
+## Decision-first use policy
 
-- one clean canonical spec;
-- old overlapping specs cleared from the active area;
-- completed plan/checklist packaging under `.ramblings/archive/`; and
-- historical context preserved without leaving the active `.ramblings/` area noisy.
+Use this skill only when the work is in a **cleanup/archival phase**.
 
-## Goal
+- **Do use:** archive completed work, consolidate overlapping specs, de-noise `.ramblings/`, preserve history.
+- **Do not use:** active implementation, debugging, reviewing, or new-spec first-principles planning.
 
-Produce a clean end state for a workstream by:
+## Core decision principles
 
-1. consolidating related specs into one canonical source of truth when needed;
-2. deciding what stays active versus what becomes historical;
-3. archiving completed work units using the repo's existing archive process.
+1. **Canonical-first:** produce one canonical workstream spec when possible.
+2. **History-preserved:** keep older specs as archived context, never fabricate missing execution details.
+3. **Readiness-gated:** archive only when completion checks pass.
+4. **Active area clean:** after archiving, remove obsolete active duplicates; keep only still-current authoritative artifacts.
 
-## When to use
+## 5-step behavior
 
-Use this skill when the user asks to:
+### 1) Collect evidence
+Collect plan, checklist (if present), related specs, handoffs, ready-checks, and any debug/retro/review notes.
 
-- archive or 歸檔 completed work;
-- clean up active `.ramblings/` clutter;
-- merge or consolidate multiple specs into one;
-- choose the canonical spec and remove obsolete overlap;
-- package a finished work unit into `.ramblings/archive/`.
+### 2) Resolve canonicality (decision principle 1)
+Decide one canonical outcome:
 
-## When not to use
+- generate a new merged canonical spec from overlaps, **or**
+- keep one existing canonical spec when merging adds no value.
 
-Do not use this skill when:
+If the workstream is fully finished, archive the final canonical spec too unless there is a specific reason it must remain active.
 
-- the work is still actively being implemented;
-- the main need is writing a new spec from scratch;
-- source-of-truth conflicts are so large that planning discussion is needed first;
-- the user is asking for ordinary implementation, debugging, or review rather than cleanup.
+Never keep multiple overlapping active canonical specs.
 
-## Core workflow
+### 3) Preserve context (decision principle 2)
+Move/retain obsolete specs as historical archive material with `summary.md`, `spec-index.md`, or compact notes.
 
-### 1. Inventory the related artifacts
+### 4) Readiness gate (decision principle 3)
+Archive only if all apply:
 
-Collect the work unit's:
+- plan complete;
+- checklist complete if present;
+- no active `in_progress` / `blocked` execution state;
+- no handoff claiming pending execution;
+- ready-check (if relevant) supports archival.
 
-- plan;
-- checklist, if any;
-- related specs;
-- handoffs;
-- ready-checks;
-- optional debug / retro / review notes.
+### 5) Package + cleanup (principles 3–4)
 
-### 2. Decide the canonical spec outcome
+Use the existing flow:
 
-Prefer one integrated canonical spec.
+`.ramblings/archive/YYYY-MM-DD-<topic>/`
 
-Default outcomes:
+Minimum required in package: `plan.md` plus `checklist.md` or `checklist.yaml`.
 
-1. generate one new canonical spec from overlapping active specs;
-2. keep one existing spec only when consolidation adds no real value;
-3. archive the final canonical spec too when the workstream is fully finished.
+Optional: `spec.md`, `summary.md`, `spec-index.md`, `handoff.md`, `ready-check.md`, `retro.md`, `debug.md`.
 
-Do not leave several overlapping active specs around once a canonical replacement exists.
+Then clean active area: keep only still-canonical active items and remove obsolete overlap.
 
-### 3. Preserve older specs as history
+## Stop now (ask user)
 
-Older specs should usually be preserved as history rather than silently destroyed.
+- canonical source-of-truth is unclear or requires guesswork;
+- work not complete enough to archive;
+- contradictory active/in-progress states remain;
+- multiple plausible canonical specs remain.
 
-They may move into the archived work-unit package, optionally with:
-
-- `summary.md`
-- `spec-index.md`
-- or other compact notes explaining the final source-of-truth outcome.
-
-### 4. Check archive readiness
-
-Before archive packaging, confirm:
-
-- the plan is complete;
-- the checklist is complete, if one exists;
-- no active `in_progress` or `blocked` execution state remains;
-- no handoff still claims remaining active execution work;
-- any ready-check supports the archive decision when relevant.
-
-### 5. Package the archive
-
-Use the existing archive flow under:
-
-```text
-.ramblings/archive/YYYY-MM-DD-<topic>/
-```
-
-Minimum pair:
-
-- `plan.md`
-- `checklist.md` or `checklist.yaml`
-
-Optional contents:
-
-- `spec.md`
-- `summary.md`
-- `spec-index.md`
-- `handoff.md`
-- `ready-check.md`
-- `retro.md`
-- `debug.md`
-
-### 6. Clean the active area
-
-After consolidation and packaging:
-
-- keep only the still-canonical active spec, if any;
-- remove obsolete active overlap;
-- avoid leaving duplicate active + archived copies without a clear reason.
-
-## Stop conditions
-
-Stop and ask the user when:
-
-- multiple candidate specs remain plausibly canonical after inspection;
-- the work is not actually complete enough to archive;
-- active checklist/plan/handoff state still conflicts;
-- consolidation would require guesswork about source of truth.
-
-## Suggested output
+## Suggested compact output
 
 ```markdown
 ## Archive Review
 
-**Work unit:**
-- [name]
-
-**Archive readiness:**
-- ready / not ready
-
-**Canonical spec decision:**
-- [generate one canonical spec / keep one existing canonical spec / archive final canonical spec / unresolved]
-
-**Artifacts to keep active:**
-- [item]
-
-**Artifacts to archive:**
-- [item]
-
-**Archive package:**
-- `.ramblings/archive/...`
-
-**Open ambiguity:**
-- [item]
+- Work unit: <name>
+- Archive-ready: yes / no
+- Canonical decision: <new canonical | keep existing canonical | unresolved>
+- Keep active: <items>
+- Archive package: `.ramblings/archive/YYYY-MM-DD-<topic>/`
+- Open ambiguities: <items>
 ```
-
-## Guidance
-
-- prefer one clean active spec over many overlapping active specs;
-- preserve history, but do not let history masquerade as active source of truth;
-- archive should follow the existing repo flow, not invent a new packaging system;
-- do not fabricate execution detail for old pre-checklist work — use historical notes instead.

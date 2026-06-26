@@ -5,119 +5,67 @@ description: Discussion brief writing, direction capture, planning input, pre-pl
 
 # Ramblings Brief Writing
 
-Use this skill when the user wants to capture a chosen direction as a planning brief before implementation.
+Use this skill for converged decisions: turn discussion output into a **planning-input brief**, not an execution plan.
 
-This is the right workflow for cases like:
+## Principle
+- Trigger only when direction is chosen, not when still exploring.
+- Goal: create a durable brief that seeds implementation planning.
 
-- recording a chosen direction after discussion has converged;
-- turning rough requirements into a durable planning input;
-- capturing scope, constraints, and open questions before `ramblings-writing-plans`;
-- preserving a pre-plan brief for a new feature, subsystem, DSL, website, or app.
+## Where to write
+Create: `.ramblings/briefs/YYYY-MM-DD-<topic>.md` (unless the user explicitly wants another path).
 
-## Output location
+## Core behavior
+1. Confirm discussion has converged and direction is decided.
+2. Keep scope, constraints, assumptions, and open questions explicit.
+3. Record rationale for the chosen direction.
+4. Refine/confirm likely tags from discussion into lightweight hints.
+5. Emit the standard brief structure and stop.
 
-Save briefs under:
+## Tag handoff (brief phase)
+- Add compact optional tag hints only when they improve routing.
+- Keep tags few, useful, and optional.
+- `Suggested Capability` is a companion hint and should not replace tags.
+- Do not fail or route away when tags are absent.
 
-```text
-.ramblings/briefs/YYYY-MM-DD-<topic>.md
-```
-
-Use the user's preferred location if they explicitly override this.
-
-## When to use
-
-Use this skill when:
-
-- enough discussion has converged that the chosen direction should be written down;
-- the next step is likely implementation planning rather than more open-ended exploration;
-- the output should be a planning brief, direction note, or pre-plan artifact;
-- scope, constraints, assumptions, and open questions should be preserved for later planning.
-
-Do not use it when the work is still exploratory, when the user wants immediate implementation planning, or when the request is really for a formal feature-spec or technical design document.
-
-## Goals
-
-Produce a brief that is:
-
-- understandable by a future planner or implementer;
-- concrete enough to guide `ramblings-writing-plans`;
-- explicit about scope, constraints, assumptions, chosen direction, and open questions.
-
-## Brief-writing process
-
-1. Clarify the goal.
-2. Confirm the discussion has converged enough to record a chosen direction.
-3. Identify scope, constraints, assumptions, and open questions that matter for planning.
-4. Summarize the recommended direction and why it fits.
-5. Write the result into a structured brief.
-
-## Brief structure
-
-Use this shape unless the user wants something else:
+## Standard brief structure
 
 ```markdown
 # [Topic] Brief
 
 ## Goal
-
 ## Context
-
+## Assumptions
 ## Scope
-
 ## Non-goals
-
 ## Constraints
-
 ## Chosen Direction
-
 ## Alternatives Considered
-
 ## Open Questions
-
+## Candidate Tags (optional)
 ## Next Step
 ```
 
-## Writing guidance
+## Writing principles
+- Use concrete, short statements.
+- Focus on planning input, not implementation tasks.
+- If stack choices are given, treat them as constraints.
+- Surface remaining uncertainty directly in Open Questions.
 
-- Prefer concrete language over slogans.
-- Keep the artifact oriented toward planning input, not full execution steps.
-- Name open questions explicitly instead of hiding them.
-- If stack choices are already given, treat them as constraints.
-- If uncertainty remains, capture only the options still relevant to planning.
+## Routing
 
-## Not for
+- Explicit request wins: obey user intent to go to planning/execution phases.
+- Then use `Tags` / `Suggested Capability`: if they point to a specialized-lane domain, try that first.
+- Then infer from shape: if discussion is still exploratory, route back to `ramblings-brainstorming`.
+- Otherwise keep this as the core brief-writing fallback.
 
-This skill is not for:
+## Specialized topics (compact)
+- **DSL/language design**: target users, authoring style, syntax shape, valid-input examples, compatibility/parsing constraints, intentional non-goals.
+- **Website/app design**: audience/use cases, flows, dependencies/data sources, framework constraints, rough structure.
 
-- company-format feature specs;
-- formal technical design documents;
-- stakeholder approval artifacts;
-- direct bug triage;
-- unconverged exploratory brainstorming.
+## Explicit out-of-scope
+- company-style feature specs
+- formal technical designs
+- stakeholder approval artifacts
+- direct bug triage
 
-## For DSL or language design
-
-When the topic is a DSL or config language, cover:
-
-- target users;
-- intended authoring style;
-- core syntax shape;
-- examples of valid input;
-- parsing or compatibility constraints;
-- what the DSL is intentionally not trying to solve.
-
-## For website or app design
-
-When the topic is a website or app, cover:
-
-- audience and primary use cases;
-- main screens or flows;
-- data sources or existing scripts/services it depends on;
-- chosen framework/library constraints;
-- rough component or page structure.
-
-## End condition
-
-This skill ends when the brief is good enough to support review, handoff, or `ramblings-writing-plans`.
-
-If the user wants to move toward implementation, the next skill should usually be `ramblings-writing-plans`.
+Stop after producing the brief. If the user is ready to plan implementation, route to `ramblings-writing-plans`.

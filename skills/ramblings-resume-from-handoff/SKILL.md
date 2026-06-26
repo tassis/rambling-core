@@ -1,110 +1,71 @@
 ---
 name: ramblings-resume-from-handoff
-description: Resume from handoff, continue prior session, restart from latest handoff, continuation workflow. Use when the current task should continue from a previous handoff artifact. Read the newest relevant handoff in .ramblings/handoffs/, verify it is still current, then resume from referenced specs, plans, reviews, or debug notes instead of relying on the handoff alone.
+description: Resume from handoff, continue prior session, restart from latest handoff, continuation workflow. Use when the current task should continue from a previous handoff artifact. Read the newest relevant handoff in .ramblings/handoffs/, verify it is still current, then resume from referenced briefs, plans, checklists, or other supporting artifacts instead of relying on the handoff alone.
 ---
 
 # Ramblings Resume From Handoff
 
-Use this skill when the current session is explicitly continuing work from a prior handoff.
+Use this skill only when the session is an explicit continuation from a prior handoff.
 
-## Goal
+## Core behavior (verification-first)
 
-Resume safely from the latest relevant state without treating an old handoff note as perfect truth.
+- Verify before trust: read handoff + check truth in source artifacts.
+- Resume from the latest relevant handoff, but only if still current.
+- Keep source artifacts as source-of-truth, handoff as hint.
 
-## Input location
+## Location
 
-Look for handoff artifacts in:
+Primary artifacts:
 
-```text
-.ramblings/handoffs/
-```
+`.ramblings/handoffs/`
 
-## Resumption flow
+## Resume principles
 
-### 1. Find the newest relevant handoff
+1. **Specificity-first selection**
+   - Prefer exact `work_unit` match over broad `topic` match.
+   - If equal, use newest relevant handoff.
 
-Use this selection ladder:
+2. **Freshness-first validity**
+   - Exclude `superseded`, `stale`, and clearly invalidated candidates.
+   - Prefer handoffs that explicitly `supersede` others.
 
-1. filter to handoffs relevant to the requested or inferred work unit/topic;
-2. prefer exact `work_unit` matches over broader `topic` matches;
-3. exclude handoffs marked `superseded`, `stale`, or clearly invalidated by newer source artifacts;
-4. prefer a handoff that explicitly `supersedes` another candidate;
-5. among the remaining candidates, prefer the newest dated handoff.
+3. **Source-first verification**
+   - Verify referenced brief/plan/checklist and supporting artifacts exist and align.
+   - Confirm blockers, state, and next action still make sense.
+   - If source says otherwise, follow source.
 
-Older handoffs without frontmatter metadata may still be considered during resume, but treat them conservatively:
+4. **Conservative legacy handling**
+   - Old handoffs without metadata may be used only as weak hints.
+   - Infer topic from filename/content only when clear; otherwise treat as ambiguous.
 
-- infer `topic` or workstream from filename/content only when it is reasonably clear;
-- prefer explicitly referenced source artifacts over inferred handoff claims;
-- if old handoffs remain ambiguous after verification, stop and ask the user.
+## Procedure
 
-### 2. Verify that it is still current
+1. Select the newest valid handoff using the principles above.
+2. Immediately open referenced source artifacts (`briefs`, `plans`, `checklists`, and other supporting artifacts) and validate claims.
+3. Classify each key claim: `current`, `stale`, or `ambiguous`.
+4. Reconstruct state and next action from validated claims.
+5. If after verification multiple plausible candidates remain, stop and ask the user.
 
-Check whether:
+### Mandatory precedence
 
-- the referenced plan or spec still exists;
-- the active checklist or plan does not contradict the handoff's claimed state;
-- newer work has already changed the situation;
-- blockers are still real;
-- the suggested next step still makes sense.
+Any conflict between handoff and source artifacts: **source artifacts win**.
 
-### 3. Read the source artifacts
-
-Do not rely on the handoff note alone.
-
-Read the referenced artifacts first, such as:
-
-- `.ramblings/briefs/...`
-- `.ramblings/plans/...`
-- `.ramblings/reviews/...`
-- `.ramblings/debug/...`
-
-Source artifacts outrank the handoff note even after a candidate handoff is selected.
-
-### 4. Reconstruct current state
-
-Summarize:
-
-- what is still true;
-- what has changed;
-- what the next actionable step should be.
-
-### 5. Continue with the right next skill
-
-Depending on the state, hand off to:
+## Routing (compact)
 
 - `ramblings-writing-plans`
 - `ramblings-implementing-plans`
-- `ramblings-systematic-debugging`
-- `ramblings-ready-check`
-
-## Suggested output
+- external debugging workflow if available
+- external review or completion-check workflow if available
 
 ```markdown
-## Resume Summary
+## Resume summary
 
-**Latest handoff used:**
-- `.ramblings/handoffs/...`
+- Latest handoff: `.ramblings/handoffs/...`
+- Still current: [...]
+- Stale/changed: [...]
+- Source-of-truth artifacts: [...]
+- Next action: [...]
+- Next skill: `ramblings-*`
 
-**Still current:**
-- [item]
-
-**Changed or stale:**
-- [item]
-
-**Artifacts to treat as source of truth:**
-- [paths]
-
-**Next step:**
-- [action]
-
-**Suggested next skill:**
-- `ramblings-*`
+- If ambiguity remains: ask user to disambiguate.
 ```
-
-## Guidance
-
-- newest handoff first, but verify before trusting;
-- if multiple candidates remain equally plausible after verification, stop and ask the user rather than guessing;
-- source artifacts outrank the handoff note;
-- mixed old/new handoff sets are allowed; new metadata improves selection, but does not retroactively make older notes authoritative;
-- if no handoff is current enough, say so and rebuild context deliberately.

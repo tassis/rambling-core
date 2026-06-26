@@ -1,141 +1,52 @@
 ---
 name: ramblings-brainstorming
-description: Brainstorming, design discussion, requirement discovery, architecture exploration, stack tradeoffs, feature shaping. Use when the user wants to talk through what to build before committing to a spec or implementation plan, especially for new features, websites, apps, DSLs, or subsystem design.
+description: Pre-brief/pre-plan exploration for discussion, requirement clarification, tradeoff shaping, and direction selection.
 ---
 
 # Ramblings Brainstorming
 
-Use this skill before brief writing when the task still needs exploration, clarification, or trade-off discussion.
+## What this is
+Use this skill for **pre-brief / pre-plan** exploration: discuss requirements, shape tradeoffs, and select direction before any brief or plan is finalized.
 
-This is the right skill when the user is saying things like:
+Use when users say they want to "think this through first", "design this", or "evaluate approaches".
 
-- "let's think through this first"
-- "help me design this"
-- "what would be a good way to structure this"
-- "I want to build X with Y and Z"
-- "let's discuss requirements before implementation"
+## Behavioral principles
+- **Clarify first**: pin down goal, users, outcomes, and constraints.
+- **Bound early**: define scope, non-goals, fixed stack, and reuse obligations.
+- **Compare narrowly**: evaluate a small set of realistic options.
+- **Choose and commit**: recommend one path as soon as confidence is sufficient.
+- **Route decisively**: move onward once design is stable.
 
-## Goal
+## Flow
+1. Clarify objective and constraints.  
+2. Surface scope boundaries and compatibility assumptions.  
+3. Explore 2–3 viable options with fit, tradeoffs, complexity, and long-term risk.  
+4. Recommend one approach and justify it against constraints.  
+5. Propose a few lightweight candidate tags if useful for downstream handoff (optional, non-binding).  
+6. Decide: continue discussion, or route to next artifact.
 
-Turn rough intent into a clearer direction that is ready for one of these next steps:
+## Routing
+- Explicit request first: follow any user request to move to brief-writing or plan-writing.
+- Metadata second: if `Tags` / `Suggested Capability` strongly indicates a specialized lane, route there first.
+- Then conservative inference: converged decision -> `ramblings-brief-writing`; clear sequenced scope -> `ramblings-writing-plans`.
+- Otherwise keep using this core phase as fallback (do not depend on any extension pack being present).
 
-- write a brief with `ramblings-brief-writing`
-- write an implementation plan with `ramblings-writing-plans`
-- stop at discussion only if the user is not ready to proceed
+## Output (when useful)
+When meaningful decisions emerge, save notes at:
+`.ramblings/briefs/YYYY-MM-DD-<topic>.md`
 
-## Output location
-
-If the discussion should be written down, save notes or a draft under:
-
-```text
-.ramblings/briefs/YYYY-MM-DD-<topic>.md
-```
-
-Do not force file output for every short discussion. Write it down when the discussion has enough substance that future reference matters.
-
-## Discussion flow
-
-### 1. Clarify the objective
-
-Identify:
-
-- what the user wants to build or change;
-- who it is for;
-- why it matters;
-- what constraints already exist.
-
-### 2. Surface the boundaries
-
-Ask or infer:
-
-- what is in scope;
-- what is intentionally out of scope;
-- what existing systems or artifacts must be reused;
-- what stack choices are already fixed.
-
-### 3. Explore 2-3 plausible approaches
-
-When the design is still open, compare a small number of realistic options.
-
-For each option, cover:
-
-- why it fits;
-- trade-offs;
-- complexity;
-- maintenance cost;
-- where it may cause trouble later.
-
-### 4. Recommend a direction
-
-Do not just list options forever. Recommend one approach when enough context exists.
-
-Explain why it is the best fit for the stated constraints.
-
-### 5. Decide the next artifact
-
-Choose one:
-
-- continue discussion only;
-- write a spec;
-- move to implementation planning.
-
-## Writing guidance
-
-- Prefer concrete questions over abstract theorizing.
-- Keep the user moving toward clearer decisions.
-- If stack choices are fixed, treat them as constraints rather than reopening them.
-- If an approach is obviously mismatched, say so and explain why.
-
-## Useful structure for substantial brainstorming
-
+Suggested compact note structure:
 ```markdown
-# [Topic] Brainstorm Notes
-
-## Objective
-
-## Constraints
-
-## Options Considered
-
-## Recommended Direction
-
-## Open Questions
-
-## Next Step
+- Objective
+- Constraints
+- Options considered
+- Recommendation + rationale
+- Open questions
+- Candidate tags (optional)
+- Next step
 ```
 
-## Special cases
-
-### New website or app
-
-Cover:
-
-- target users;
-- main flows or screens;
-- relationship to existing scripts, services, or data;
-- framework and UI constraints;
-- what must exist in the first version.
-
-### DSL or config language
-
-Cover:
-
-- target users;
-- authoring ergonomics;
-- required syntax shape;
-- compatibility constraints;
-- examples of intended usage.
-
-### Existing project feature
-
-Cover:
-
-- which current components or files the feature will touch;
-- what historical behavior must be preserved;
-- where the design risk is highest.
-
-## When to hand off
-
-When the discussion has converged enough that a document should exist, move to `ramblings-brief-writing`.
-
-When the spec is already clear enough to execute, move to `ramblings-writing-plans`.
+## Compact special cases
+- **Website/app**: users, core flows/screens, data/services integration, MVP must-have.
+- **DSL/config**: users, authoring ergonomics, syntax shape, compatibility, usage examples.
+- **Existing-project feature**: impacted components/files, behavior to preserve, highest-risk integration points.

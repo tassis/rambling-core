@@ -4,25 +4,19 @@ import YAML from "yaml"
 import {
   type StartWorkChecklistState,
   type StartWorkChecklistTask,
-  type StartWorkDelegation,
-  type StartWorkDelegationRegistryEntry,
-  type StartWorkDelegationStatus,
   type StartWorkExecutionState,
   type StartWorkTaskStatus,
 } from "./types"
 
 const EXECUTION_STATES: StartWorkExecutionState[] = ["running", "waiting", "blocked", "replanning", "cancelled", "done", "ask-user"]
 const TASK_STATUSES: StartWorkTaskStatus[] = ["not_started", "in_progress", "blocked", "cancelled", "complete"]
-const DELEGATION_STATUSES: StartWorkDelegationStatus[] = ["running", "terminal_unreconciled", "terminal_reconciled", "cancelled_obsolete"]
 
 export interface StartWorkTaskPatch {
   status?: StartWorkTaskStatus
-  delegated_to?: StartWorkDelegation | null
-  waiting_on?: string | null
-  blocked_by?: string | null
-  unblock_when?: string | null
-  next_action?: string | null
-  last_update?: string | null
+  blocked_by?: string
+  unblock_when?: string
+  next_action?: string
+  last_update?: string
 }
 
 export function updateChecklistTask(
@@ -55,68 +49,6 @@ export function setActiveTask(
   }
 }
 
-export function upsertDelegationEntry(
-  checklist: StartWorkChecklistState,
-  entry: StartWorkDelegationRegistryEntry,
-): StartWorkChecklistState {
-  // Minimal lifecycle contract:
-  // - dispatch creates or refreshes a `running` registry entry
-  // - terminal hook return moves it to `terminal_unreconciled`
-  // - reconcile + verify + checklist writeback move it to `terminal_reconciled`
-  // - stale-lane cleanup may mark it `cancelled_obsolete`
-  const delegations = checklist.delegations ?? []
-  const existingIndex = delegations.findIndex((delegation) => delegation.task_id === entry.task_id)
-
-  if (existingIndex === -1) {
-    return {
-      ...checklist,
-      delegations: [...delegations, entry],
-    }
-  }
-
-  return {
-    ...checklist,
-    delegations: delegations.map((delegation, index) => (index === existingIndex ? entry : delegation)),
-  }
-}
-
-export function setDelegationStatus(
-  checklist: StartWorkChecklistState,
-  taskId: string,
-  status: StartWorkDelegationStatus,
-): StartWorkChecklistState {
-  return {
-    ...checklist,
-    delegations: (checklist.delegations ?? []).map((delegation) =>
-      delegation.task_ref === taskId
-        ? {
-            ...delegation,
-            status,
-          }
-        : delegation,
-    ),
-  }
-}
-
-export function reconcileDelegatedLaneTerminalResult(
-  checklist: StartWorkChecklistState,
-  taskId: string,
-  note?: string | null,
-): StartWorkChecklistState {
-  return setActiveTask(
-    setDelegationStatus(
-      clearTaskDelegation(checklist, taskId, {
-        registryStatus: "terminal_reconciled",
-        last_update: note ?? null,
-      }),
-      taskId,
-      "terminal_reconciled",
-    ),
-    taskId,
-    checklist.execution_state,
-  )
-}
-
 export function applyContinuationWriteback(
   checklist: StartWorkChecklistState,
   continuation: { kind: "waiting" | "done" | "replanning" | "ask-user"; activeTaskId: string | null; reason: string; note?: string },
@@ -131,68 +63,6 @@ export function applyContinuationWriteback(
     updatedChecklist,
     continuation.kind === "done" ? null : continuation.activeTaskId ?? checklist.active_task,
     continuation.kind,
-  )
-}
-
-export function clearTaskDelegation(
-  checklist: StartWorkChecklistState,
-  taskId: string,
-  options?: {
-    keepRegistry?: boolean
-    registryStatus?: StartWorkDelegationStatus
-    waiting_on?: string | null
-    last_update?: string | null
-  },
-): StartWorkChecklistState {
-  let nextChecklist = updateChecklistTask(checklist, taskId, {
-    delegated_to: null,
-    waiting_on: options?.waiting_on ?? null,
-    last_update: options?.last_update,
-  })
-
-  if (options?.keepRegistry === false) {
-    nextChecklist = {
-      ...nextChecklist,
-      delegations: (nextChecklist.delegations ?? []).filter((delegation) => delegation.task_ref !== taskId),
-    }
-  } else if (options?.registryStatus) {
-    const registryStatus = options.registryStatus
-
-    nextChecklist = {
-      ...nextChecklist,
-      delegations: (nextChecklist.delegations ?? []).map((delegation) =>
-        delegation.task_ref === taskId
-          ? {
-              ...delegation,
-              status: registryStatus,
-            }
-          : delegation,
-      ),
-    }
-  }
-
-  return nextChecklist
-}
-
-export function assignTaskDelegation(
-  checklist: StartWorkChecklistState,
-  taskId: string,
-  delegation: StartWorkDelegationRegistryEntry,
-  options?: {
-    waiting_on?: string | null
-    last_update?: string | null
-  },
-): StartWorkChecklistState {
-  return upsertDelegationEntry(
-    updateChecklistTask(checklist, taskId, {
-      delegated_to: {
-        role: delegation.role,
-        task_id: delegation.task_id,
-      },
-      waiting_on: options?.waiting_on ?? "lane_completion",
-      last_update: options?.last_update ?? null,
-    }),
-    delegation,
   )
 }
 
@@ -260,9 +130,11 @@ export async function readChecklistStateDetailed(
 }
 
 export function serializeChecklistState(checklist: StartWorkChecklistState) {
-  const normalized: StartWorkChecklistState = {
-    ...checklist,
-    delegations: checklist.delegations ?? [],
+  const normalized = {
+    plan: checklist.plan,
+    active_task: checklist.active_task,
+    execution_state: checklist.execution_state,
+    tasks: checklist.tasks.map(serializeTaskCanonical),
     notes: checklist.notes && checklist.notes.length > 0 ? checklist.notes : undefined,
   }
 
@@ -274,123 +146,145 @@ export function serializeChecklistState(checklist: StartWorkChecklistState) {
 }
 
 export function parseChecklistState(text: string): StartWorkChecklistState {
-  const parsed = YAML.parse(text) as StartWorkChecklistState | null
+  const parsed = YAML.parse(text)
 
   if (!parsed || typeof parsed !== "object") {
     throw new Error("Checklist YAML did not parse to an object.")
   }
 
-  validateChecklistState(parsed)
+  const checked = parseChecklistShape(parsed)
 
   return {
-    plan: parsed.plan,
-    active_task: parsed.active_task ?? null,
-    execution_state: parsed.execution_state,
-    delegations: parsed.delegations ?? [],
-    tasks: (parsed.tasks ?? []).map(normalizeTask),
-    notes: parsed.notes && parsed.notes.length > 0 ? parsed.notes : undefined,
+    plan: checked.plan,
+    active_task: checked.active_task,
+    execution_state: checked.execution_state,
+    tasks: checked.tasks,
+    notes: checked.notes,
   }
 }
 
-function normalizeTask(task: StartWorkChecklistTask): StartWorkChecklistTask {
-  return {
+function serializeTaskCanonical(task: StartWorkChecklistTask): StartWorkChecklistTask {
+  const serialized: StartWorkChecklistTask = {
     id: task.id,
     title: task.title,
     status: task.status,
-    delegated_to: task.delegated_to ?? null,
-    waiting_on: task.waiting_on ?? null,
-    blocked_by: task.blocked_by ?? null,
-    unblock_when: task.unblock_when ?? null,
-    next_action: task.next_action ?? null,
-    last_update: task.last_update ?? null,
   }
+
+  if (task.blocked_by !== undefined && task.blocked_by !== null) {
+    serialized.blocked_by = task.blocked_by
+  }
+
+  if (task.unblock_when !== undefined && task.unblock_when !== null) {
+    serialized.unblock_when = task.unblock_when
+  }
+
+  if (task.next_action !== undefined && task.next_action !== null) {
+    serialized.next_action = task.next_action
+  }
+
+  if (task.last_update !== undefined && task.last_update !== null) {
+    serialized.last_update = task.last_update
+  }
+
+  return serialized
 }
 
-function validateChecklistState(checklist: StartWorkChecklistState) {
-  if (typeof checklist.plan !== "string" || checklist.plan.length === 0) {
+type ParsedChecklistState = {
+  plan: unknown
+  active_task?: unknown
+  execution_state: unknown
+  tasks: unknown
+  notes?: unknown
+}
+
+function parseChecklistShape(checklist: ParsedChecklistState | unknown) {
+  if (typeof checklist !== "object" || checklist === null) {
+    throw new Error("Checklist YAML did not parse to an object.")
+  }
+
+  const parsedChecklist = checklist as ParsedChecklistState
+
+  if (typeof parsedChecklist.plan !== "string" || parsedChecklist.plan.length === 0) {
     throw new Error("Checklist plan must be a non-empty string.")
   }
 
-  if (!EXECUTION_STATES.includes(checklist.execution_state)) {
-    throw new Error(`Checklist execution_state is invalid: ${String(checklist.execution_state)}`)
+  if (!EXECUTION_STATES.includes(parsedChecklist.execution_state as StartWorkExecutionState)) {
+    throw new Error(`Checklist execution_state is invalid: ${String(parsedChecklist.execution_state)}`)
   }
 
-  if (checklist.active_task !== null && typeof checklist.active_task !== "string") {
+  if (
+    parsedChecklist.active_task !== undefined &&
+    parsedChecklist.active_task !== null &&
+    typeof parsedChecklist.active_task !== "string"
+  ) {
     throw new Error("Checklist active_task must be a string or null.")
   }
 
-  if (!Array.isArray(checklist.tasks)) {
+  if (!Array.isArray(parsedChecklist.tasks)) {
     throw new Error("Checklist tasks must be an array.")
   }
 
-  checklist.tasks.forEach(validateChecklistTask)
+  const normalizedTasks: StartWorkChecklistTask[] = parsedChecklist.tasks.map((task, index) => parseTaskShape(task, index))
 
-  if (checklist.delegations !== undefined) {
-    if (!Array.isArray(checklist.delegations)) {
-      throw new Error("Checklist delegations must be an array when present.")
-    }
-
-    checklist.delegations.forEach(validateDelegationEntry)
-  }
-
-  if (checklist.notes !== undefined) {
-    if (!Array.isArray(checklist.notes) || checklist.notes.some((note) => typeof note !== "string")) {
+  if (parsedChecklist.notes !== undefined) {
+    if (!Array.isArray(parsedChecklist.notes) || parsedChecklist.notes.some((note) => typeof note !== "string")) {
       throw new Error("Checklist notes must be an array of strings when present.")
     }
   }
+
+  return {
+    plan: parsedChecklist.plan,
+    active_task: parsedChecklist.active_task ?? null,
+    execution_state: parsedChecklist.execution_state as StartWorkExecutionState,
+    tasks: normalizedTasks,
+    notes: parsedChecklist.notes && parsedChecklist.notes.length > 0 ? parsedChecklist.notes : undefined,
+  }
 }
 
-function validateChecklistTask(task: StartWorkChecklistTask) {
-  if (typeof task.id !== "string" || task.id.length === 0) {
+type ParsedChecklistTask = {
+  id?: unknown
+  title?: unknown
+  status?: unknown
+  blocked_by?: unknown
+  unblock_when?: unknown
+  next_action?: unknown
+  last_update?: unknown
+}
+
+function parseTaskShape(rawTask: ParsedChecklistTask, index: number): StartWorkChecklistTask {
+  if (typeof rawTask !== "object" || rawTask === null) {
+    throw new Error(`Checklist task ${index} must be an object.`)
+  }
+
+  if (typeof rawTask.id !== "string" || rawTask.id.length === 0) {
     throw new Error("Checklist task id must be a non-empty string.")
   }
 
-  if (typeof task.title !== "string" || task.title.length === 0) {
-    throw new Error(`Checklist task ${task.id} title must be a non-empty string.`)
+  if (typeof rawTask.title !== "string" || rawTask.title.length === 0) {
+    throw new Error(`Checklist task ${rawTask.id} title must be a non-empty string.`)
   }
 
-  if (!TASK_STATUSES.includes(task.status)) {
-    throw new Error(`Checklist task ${task.id} has invalid status: ${String(task.status)}`)
+  if (!TASK_STATUSES.includes(rawTask.status as StartWorkTaskStatus)) {
+    throw new Error(`Checklist task ${rawTask.id} has invalid status: ${String(rawTask.status)}`)
   }
 
-  validateNullableString(task.waiting_on, `Checklist task ${task.id} waiting_on`)
-  validateNullableString(task.blocked_by, `Checklist task ${task.id} blocked_by`)
-  validateNullableString(task.unblock_when, `Checklist task ${task.id} unblock_when`)
-  validateNullableString(task.next_action, `Checklist task ${task.id} next_action`)
-  validateNullableString(task.last_update, `Checklist task ${task.id} last_update`)
+  validateNullableString(rawTask.blocked_by, `Checklist task ${rawTask.id} blocked_by`)
+  validateNullableString(rawTask.unblock_when, `Checklist task ${rawTask.id} unblock_when`)
+  validateNullableString(rawTask.next_action, `Checklist task ${rawTask.id} next_action`)
+  validateNullableString(rawTask.last_update, `Checklist task ${rawTask.id} last_update`)
 
-  if (task.delegated_to !== null) {
-    validateDelegation(task.delegated_to, `Checklist task ${task.id} delegated_to`)
-  }
-}
-
-function validateDelegationEntry(delegation: StartWorkDelegationRegistryEntry) {
-  validateDelegation(delegation, "Checklist delegation entry")
-
-  if (typeof delegation.name !== "string" || delegation.name.length === 0) {
-    throw new Error("Checklist delegation entry name must be a non-empty string.")
-  }
-
-  if (typeof delegation.task_ref !== "string" || delegation.task_ref.length === 0) {
-    throw new Error("Checklist delegation entry task_ref must be a non-empty string.")
-  }
-
-  if (!DELEGATION_STATUSES.includes(delegation.status)) {
-    throw new Error(`Checklist delegation entry has invalid status: ${String(delegation.status)}`)
+  return {
+    id: rawTask.id,
+    title: rawTask.title,
+    status: rawTask.status as StartWorkTaskStatus,
+    blocked_by: rawTask.blocked_by === undefined || rawTask.blocked_by === null ? undefined : String(rawTask.blocked_by),
+    unblock_when: rawTask.unblock_when === undefined || rawTask.unblock_when === null ? undefined : String(rawTask.unblock_when),
+    next_action: rawTask.next_action === undefined || rawTask.next_action === null ? undefined : String(rawTask.next_action),
+    last_update: rawTask.last_update === undefined || rawTask.last_update === null ? undefined : String(rawTask.last_update),
   }
 }
 
-function validateDelegation(delegation: StartWorkDelegation, label: string) {
-  if (typeof delegation.role !== "string" || delegation.role.length === 0) {
-    throw new Error(`${label} role must be a non-empty string.`)
-  }
-
-  if (typeof delegation.task_id !== "string" || delegation.task_id.length === 0) {
-    throw new Error(`${label} task_id must be a non-empty string.`)
-  }
-}
-
-function validateNullableString(value: string | null | undefined, label: string) {
+function validateNullableString(value: unknown, label: string) {
   if (value !== null && value !== undefined && typeof value !== "string") {
     throw new Error(`${label} must be a string or null.`)
   }

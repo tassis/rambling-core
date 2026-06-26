@@ -1,11 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
-import { recordBlockedTask, recordDelegatedLaneTerminalOutcome, reconcileAndRerunContinuation, rerunContinuation, resolveStartWorkLoop } from "../start-work/index"
+import { recordBlockedTask, reconcileAndRerunContinuation, resolveStartWorkLoop } from "../start-work/index"
 import { readChecklistStateDetailed, writeChecklistState } from "../start-work/checklist"
 import type {
-  StartWorkContinuation,
-  StartWorkRecordTerminalToolMetadata,
   StartWorkRecordBlockedToolMetadata,
-  StartWorkRerunContinuationToolMetadata,
   StartWorkResolveToolMetadata,
   StartWorkToolErrorMetadata,
 } from "../start-work/types"
@@ -39,7 +36,7 @@ const projectRootChecklistArgs = {
 
 const projectRootChecklistTaskArgs = {
   ...projectRootChecklistArgs,
-  task_id: tool.schema.string().describe("Task identifier to mark terminal"),
+  task_id: tool.schema.string().describe("Task identifier to reconcile terminal outcome for"),
   note: tool.schema.string().describe("Update note written to checklist state")
 } as const
 
@@ -134,21 +131,6 @@ export const startWorkTools = {
     }
   }),
 
-  ramblings_start_work_rerun_continuation: tool({
-    description: "Recompute the next start-work continuation outcome from current checklist state.",
-    args: projectRootChecklistArgs,
-    async execute({ project_root, checklist_path }: { project_root: string; checklist_path: string }) {
-      const readResult = await readChecklistStateDetailed(project_root, checklist_path)
-      if (readResult.kind !== "ok") {
-        return checklistReadErrorToolResult(readResult, {
-          checklistPath: checklist_path,
-        })
-      }
-      const continuation = rerunContinuation(readResult.checklist)
-      return okToolResult(`Recomputed continuation for ${checklist_path}.`, continuationMetadata(checklist_path, readResult.checklist.plan, continuation))
-    }
-  }),
-
   ramblings_start_work_reconcile_and_rerun: tool({
     description: "Perform deterministic terminal reconciliation and rerun continuation without dispatching the next lane.",
     args: {
@@ -180,41 +162,7 @@ export const startWorkTools = {
     }
   }),
 
-  ramblings_start_work_record_terminal: tool({
-    description: "Record a delegated lane terminal result deterministically and clear task-level delegation fields.",
-    args: projectRootChecklistTaskArgs,
-    async execute({ project_root, checklist_path, task_id, note }: { project_root: string; checklist_path: string; task_id: string; note: string }) {
-      const readResult = await readChecklistStateDetailed(project_root, checklist_path)
-      if (readResult.kind !== "ok") {
-        return checklistReadErrorToolResult(readResult, { checklistPath: checklist_path, taskId: task_id })
-      }
-
-      const outcome = recordDelegatedLaneTerminalOutcome(readResult.checklist, task_id, note)
-      if (outcome.kind === "recorded") {
-        await writeChecklistState(project_root, checklist_path, outcome.checklist)
-      }
-
-      const metadata: StartWorkRecordTerminalToolMetadata = {
-        ...outcome.metadata,
-        checklistPath: checklist_path,
-      }
-
-      return okToolResult(outcome.message, metadata)
-    }
-  })
 } as const
-
-function continuationMetadata(checklistPath: string, planPath: string, continuation: StartWorkContinuation): StartWorkRerunContinuationToolMetadata {
-  return {
-    ok: true,
-    checklistPath,
-    planPath,
-    continuationKind: continuation.kind,
-    activeTaskId: continuation.activeTaskId,
-    reason: continuation.reason,
-    note: continuation.note ?? null,
-  }
-}
 
 function checklistReadErrorToolResult(
   readResult: Exclude<Awaited<ReturnType<typeof readChecklistStateDetailed>>, { kind: "ok" }>,

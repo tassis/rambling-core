@@ -22,48 +22,20 @@ export type StartWorkContinuationKind =
   | "done"
   | "ask-user"
 
-export type StartWorkSpecialistRole =
-  | "orchestrator"
-  | "explorer"
-  | "librarian"
-  | "reviewer"
-
-export interface StartWorkDelegation {
-  role: StartWorkSpecialistRole
-  /** Delegated lane task id emitted by the specialist/tooling. */
-  task_id: string
-}
-
-export type StartWorkDelegationStatus =
-  | "running"
-  | "terminal_unreconciled"
-  | "terminal_reconciled"
-  | "cancelled_obsolete"
-
-export interface StartWorkDelegationRegistryEntry extends StartWorkDelegation {
-  name: string
-  /** Checklist task id that owns this delegation entry. */
-  task_ref: string
-  status: StartWorkDelegationStatus
-}
-
 export interface StartWorkChecklistTask {
   id: string
   title: string
   status: StartWorkTaskStatus
-  delegated_to: StartWorkDelegation | null
-  waiting_on: string | null
-  blocked_by: string | null
-  unblock_when: string | null
-  next_action: string | null
-  last_update: string | null
+  blocked_by?: string
+  unblock_when?: string
+  next_action?: string
+  last_update?: string
 }
 
 export interface StartWorkChecklistState {
   plan: string
   active_task: string | null
   execution_state: StartWorkExecutionState
-  delegations?: StartWorkDelegationRegistryEntry[]
   tasks: StartWorkChecklistTask[]
   notes?: string[]
 }
@@ -72,23 +44,18 @@ export interface StartWorkPlanCandidate {
   planPath: string
   checklistPath: string | null
   handoffPath: string | null
-  readyCheckPath: string | null
 }
 
 export interface StartWorkArchiveCandidate {
   planPath: string
   checklistPath: string | null
   handoffPath: string | null
-  readyCheckPath: string | null
   cleanupState: "completed" | "cancelled"
 }
-
-export type StartWorkReadyCheckStatus = "ready" | "ready-for-review" | "ready-for-user-validation" | "not-ready"
 
 export interface StartWorkArchiveEligibilityInput {
   candidate: StartWorkArchiveCandidate
   checklist: StartWorkChecklistState | null
-  readyCheckStatus?: StartWorkReadyCheckStatus | null
   handoffClaimsActiveWork?: boolean
   hasConsolidationAmbiguity?: boolean
 }
@@ -230,6 +197,5 @@ export interface StartWorkRecordTerminalToolMetadata {
   taskId: string
   checklistPath: string
   executionState: StartWorkExecutionState
-  delegationStatus: StartWorkDelegationStatus | null
   message: string
 }

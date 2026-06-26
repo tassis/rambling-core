@@ -1,117 +1,101 @@
 ---
 name: ramblings-writing-plans
-description: Existing project implementation plan, legacy maintenance plan, .ramblings plans. Prefer brief-first by default; use for multi-step execution only when the work is implementation-ready, the user explicitly asks for a plan, or the user explicitly accepts direct plan mode. Write concrete plans into .ramblings/plans/ with exact files, ordered tasks, and verification steps.
+description: Existing-project implementation planning, legacy maintenance plan writing for .ramblings plans. Prefer brief-first by default; write plans only when implementation-ready or explicitly requested, then include concrete files, ordered tasks, and verification.
 ---
 
 # Maintenance Writing Plans
 
-Write implementation plans for existing-project work.
+Write concise implementation plans for **existing projects** (not greenfield speculation).
 
-This is not greenfield planning. Assume:
+## Scope
 
-- the codebase may be inconsistent;
-- tests may be weak;
-- names and boundaries may already be messy;
-- you should minimize risk while still being concrete.
+- Use for maintenance work where behavior is already in place.
+- **Brief-first by default.** Plan only when implementation-ready, explicitly requested, or explicitly accepted.
+- This is a maintenance contract: prioritize safety over novelty in imperfect projects.
 
-## Output location
+## Output artifacts
 
-Save plans under:
+Primary plan:
 
 ```text
 .ramblings/plans/YYYY-MM-DD-<topic>.md
 ```
 
-Use the user's preferred location if they explicitly override this.
-
-In Conductor Mode, writing planning artifacts under `.ramblings/` is allowed and expected. Conductor Mode should not treat these files as implementation edits.
-
-If execution state should live separately from the main plan, save it under:
+Optional execution state:
 
 ```text
-.ramblings/checklists/YYYY-MM-DD-<topic>.md
+.ramblings/checklists/YYYY-MM-DD-<topic>.yaml
 ```
+
+In Conductor Mode these files are planning artifacts under `.ramblings/` and must not be treated as product edits.
+
+## Tag responsibility in planning
+- This phase is the main place to record task tags explicitly for downstream execution hints.
+- Keep tags few, meaningful, and optional.
+- Missing or sparse tags are valid; execution should not depend on them being present.
 
 ## When to use
 
-Use this skill when:
+- Multi-step work
+- Multiple files/subsystems touched
+- Clear implementation-ready target with concrete files + ordered tasks + verification
+- User asks for a plan / allows direct planning / direct landing
+- Risk is high enough to require a written execution contract
 
-- the task is multi-step;
-- the task touches multiple files or subsystems;
-- the user explicitly asks for an implementation plan or allows direct planning/landing;
-- the work is clearly implementation-ready with concrete files, ordered steps, and verification;
-- the existing project is risky enough that execution should be guided by a written plan.
+### Routing
 
-Do not use it for trivial one-file tweaks unless the user explicitly asks for a written plan.
+- Explicit request first: follow user direction for handoff (e.g., execute, investigate, or delegate).
+- Then `Tags` / `Suggested Capability`: when metadata clearly maps to a specialized lane, route there first.
+- Then conservative inference: if work is already sequenced and checklist-ready -> `ramblings-implementing-plans`; if not implementation-ready -> `ramblings-brainstorming`.
+- Otherwise keep using this core planning skill as fallback.
 
-## Plan goals
+Skip for trivial one-file tweaks unless explicitly requested.
 
-The plan must help a low-context engineer execute safely.
+## Required contract (do not weaken)
 
-That means the plan must include:
+### Plan header (required first block)
 
-- exact files to read, create, or modify;
-- the order of operations;
-- how to validate each risky step;
-- where automated tests are realistic and where they are not;
-- what manual verification is required when tests are weak;
-- execution state markers so a later session can resume without guessing;
-- completion criteria that make each task safe to re-check before rerunning.
-
-## Plan shape
-
-Every plan should start with:
+Every plan must start with:
 
 ```markdown
 # [Topic] Maintenance Plan
 
 **Goal:** [one sentence]
-
-**Current Risk:** [what makes this change dangerous or uncertain]
-
+**Current Risk:** [what is uncertain or dangerous]
 **Approach:** [2-4 sentences]
-
-**Verification Strategy:** [tests, reproductions, manual checks]
+**Verification Strategy:** [tests, reproduction, manual checks]
 
 ---
+
+**Execution State:** `.ramblings/checklists/YYYY-MM-DD-<topic>.yaml`
 ```
 
-Then add task sections.
+The checklist is the source of **live execution state**; the plan is planning intent + risk + recommendations.
 
-Immediately after the header, either add an inline execution tracker or link to a separate checklist file under `.ramblings/checklists/`.
+### Plan body must include
 
-Inline form:
+- Exact file paths for read/create/modify.
+- Ordered tasks.
+- Verification for each risky step.
+- Optional explicit task tags in each task block when they help routing.
+- Clear “manual when no automation” fallback.
+- Completion criteria that are observable.
+- Resumption via checklist reference.
 
-```markdown
-## Execution Tracker
+### Plan/checklist split (explicit)
 
-- [ ] Task 1: [short name]
-- [ ] Task 2: [short name]
-- [ ] Task 3: [short name]
-```
+- **Plan:** why, risk, steps, recommendation, checks.
+- **Checklist:** status, active task, next action, blockers.
 
-This tracker starts unchecked. It exists so implementation sessions can update progress in-place instead of reconstructing state from memory.
-
-The tracker is a compact overview only. If the tracker and a task's `Status:` ever disagree, treat the task's `Status:` field as the source of truth.
-
-Separate-file form:
-
-```markdown
-**Execution State:** `.ramblings/checklists/YYYY-MM-DD-<topic>.md`
-```
-
-If a separate checklist file is used, it becomes the source of truth for execution progress and should mirror task names clearly.
-
-## Task structure
-
-Use this format:
+## Task template (compact, clear)
 
 ```markdown
 ## Task N: [short name]
 
 **Why:** [why this task exists]
 
-**Status:** [not started | in progress | blocked | complete]
+**Tags:** [optional, few, e.g. `backend`, `frontend`, `docs`]
+**Risk:** [low/medium/high; key uncertainty]
 
 **Files:**
 - Read: `path/to/file`
@@ -119,71 +103,62 @@ Use this format:
 - Create: `path/to/file`
 - Verify: `path/to/test-or-command`
 
+**Suggested Capability:** [optional]
+**Suggested External Review:** [optional]
+
 **Steps:**
 1. [specific action]
 2. [specific action]
-3. [specific action]
 
 **Verification:**
 - Run: `exact command`
-- Expect: [concrete expected result]
+- Expect: [observable result]
 
 **Completion Criteria:**
-- [specific observable condition that means this task is actually done]
-- [use file state, test result, command output, or visible behavior rather than abstract intent]
+- [specific done condition]
 
-**Re-entry / Idempotence Notes:**
-- [how to tell whether this task was already completed]
-- [what to re-check before rerunning]
+**Re-entry / Idempotence:**
+- [how to detect already complete]
 
-**Notes / Risks:**
-- [edge case, dependency, ambiguity, migration concern]
+**Notes / Risks:** [short edge case or dependency]
 ```
 
-## Planning rules
+## Principle rules (short form)
 
-1. Use exact file paths.
-2. Keep tasks small and ordered.
-3. Prefer concrete steps over vague intent.
-4. If you mention tests, say exactly which tests or commands.
-5. If automated tests are not practical, say so explicitly and specify manual verification.
-6. Follow existing project structure unless the user is intentionally restructuring it.
-7. Every task must have a visible status field and completion criteria.
-8. Every risky or multi-step task must say how to detect "already done" before re-executing it.
-9. A task is not complete until its verification has passed and its status/tracker has been updated.
-10. Conductor Mode may write or update `.ramblings/plans/**` and `.ramblings/checklists/**`, but should not edit product code while doing planning-only work.
+1. `Tags`, `Risk`, `Suggested Capability`, `Suggested External Review` are soft hints only.
+2. Use exact paths and deterministic commands.
+3. Keep tasks small, concrete, and ordered.
+4. State exactly which tests run; if unavailable, state manual checks explicitly.
+5. Do not over-design; this is maintenance planning.
+6. Every task is complete only after verification passes and the checklist is updated.
 
 ## No-placeholder rule
 
-These are plan failures:
+Forbidden phrases (replace with concrete work):
 
-- "TODO"
-- "implement later"
-- "add validation"
-- "handle edge cases"
-- "write tests"
-- "refactor as needed"
-- "similar to previous task"
-
-Replace them with concrete actions.
+- TODO
+- implement later
+- add validation
+- handle edge cases
+- write tests
+- refactor as needed
+- similar to previous task
 
 ## Maintenance-specific guidance
 
-For old or fragile codebases:
+- Start with behavior understanding when behavior is uncertain.
+- Add targeted inspection steps for confusing/risky files.
+- Prefer minimal, reversible changes.
+- Use the checklist for multi-session resumability.
 
-1. Include a task to understand current behavior before changing it.
-2. If behavior is unclear, include a reproduction or observation step.
-3. If a risky file is large or confusing, say what part to inspect first.
-4. Prefer minimal, reversible changes over cleanup sprees.
-5. If execution may span multiple sessions, make the tracker and task statuses sufficient for another agent to resume safely.
+## Before finishing a plan
 
-## Before finishing the plan
+Self-check quickly:
 
-Self-check:
+1. Do requirements map to tasks?
+2. Are all paths concrete?
+3. Is verification explicit for risky items?
+4. Is automation vs manual verification clear?
+5. Can resume be done from checklist without guessing?
 
-1. Does each requirement map to a task?
-2. Are file paths concrete?
-3. Does each risky task have verification?
-4. Did you clearly distinguish automated vs manual verification?
-5. Did you avoid over-design for a maintenance task?
-6. Can an implementer tell what is done, what is blocked, and what can be safely retried?
+(End of file)

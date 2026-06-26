@@ -1,14 +1,15 @@
 {
-  "name": "ramblings",
+  "name": "ramblings-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Ramblings workflow framework plugin for OpenCode",
+  "description": "Core workflow plugin for OpenCode: brainstorm, brief, plan, execute, handoff/resume, archive",
   "type": "module",
   "main": "./plugin/ramblings-plugin.ts",
   "exports": "./plugin/ramblings-plugin.ts",
   "scripts": {
     "validate:start-work": "bun test plugin/start-work/*.test.ts",
-    "test:start-work": "bun test plugin/start-work/*.test.ts"
+    "test:start-work": "bun test plugin/start-work/*.test.ts",
+    "test:plugin-surface": "bun test plugin/**/*.test.ts"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.17.8",

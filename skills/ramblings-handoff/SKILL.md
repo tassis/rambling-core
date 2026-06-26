@@ -1,130 +1,90 @@
 ---
 name: ramblings-handoff
-description: Session handoff, context transfer, next-session summary, resumable work note, handoff artifact. Use only when work needs to be handed off to a later session, another agent run, or a future continuation. Save handoff artifacts under .ramblings/handoffs/ with dates, reference existing specs/plans/reviews instead of duplicating them, and prefer the newest relevant handoff when resuming.
+description: Explicit cross-session transfer skill. Use only for handing off unfinished work to a later session/agent run/future continuation; not a generic status summary.
 ---
 
 # Ramblings Handoff
 
-Use this skill only when work is being explicitly handed off.
+Produce a compact, resumable transfer artifact so the next run can continue fast.
 
-This is not a generic summary skill. It exists to help the next session continue without re-deriving the entire context.
+- **Not** for same-session progress updates.
+- **Not** for generic storytelling or repeating source content.
 
-## Output location
+## Transfer principles
 
-Save handoff files under:
+1. **Explicit transfer only**: invoke for explicit handoff to later session/run only.
+2. **Reference, don’t duplicate**: point to existing briefs/plans/checklists and any relevant supporting artifacts; never paste large artifacts.
+3. **Newest first**: create dated artifacts and resume from the latest relevant one.
+4. **Append-only continuity**: do not mutate past handoffs; keep history compactly.
+5. **Resume-first output**: include only what a new session needs to take action immediately.
 
-```text
-.ramblings/handoffs/YYYY-MM-DD-<topic>.md
-```
+## Output path
 
-New handoffs should use a compact frontmatter block:
+Save handoff files at:
+
+`.ramblings/handoffs/YYYY-MM-DD-<topic>.md`
+
+## Compact frontmatter contract (required)
 
 ```yaml
 ---
-topic: ultrawork
-work_unit: ultrawork-runtime-hardening
+topic: <broad-topic>
+work_unit: <specific-work-unit>
 references:
-  - .ramblings/plans/...
   - .ramblings/briefs/...
-supersedes: 2026-06-18-ultrawork-status-handoff.md   # optional
-status: active                                       # active | superseded | stale | complete
+  - .ramblings/plans/...
+supersedes: <previous-handoff-filename.md>   # optional
+status: active                               # active | superseded | stale | complete
 ---
 ```
 
-Field guidance:
+Rules:
 
-- `topic`: broad human grouping for the work.
-- `work_unit`: narrower resume key; prefer this over `topic` when both are present.
-- `references`: source-of-truth artifacts the next session should read first.
-- `supersedes`: optional explicit replacement link to an older handoff.
-- `status`: handoff lifecycle hint without deleting historical context.
+- `topic`: broad bucket.
+- `work_unit`: preferred resume key.
+- `references`: source artifacts to read first.
+- `supersedes`: optional explicit link to the direct predecessor.
+- `status`: lifecycle hint; keep older handoffs even when superseded.
 
-## When to use
+## Required sections in handoff body
 
-Use this skill when:
+- Current objective
+- Current state
+- Relevant artifacts to read first
+- Blockers / questions
+- Suggested next step
+- Suggested next skills
 
-- the current session is stopping but the work is not finished;
-- a later session should resume from current context;
-- the user wants a compact transfer artifact;
-- another workflow stage should continue from the current one.
+Use brief bullets, not long prose.
 
-Do not use it for ordinary progress updates inside the same session.
-
-## Lifecycle rule
-
-Handoff artifacts are transitional by default.
-
-That means:
-
-1. create them only when a real handoff is needed;
-2. date them clearly;
-3. keep them append-only rather than rewriting one mutable `current.md` handoff;
-4. when resuming, read the newest relevant handoff first;
-5. treat older handoffs as historical context, not primary truth;
-6. after a successful continuation, obsolete handoffs may be cleaned up or ignored.
-
-## Core rule
-
-Do not duplicate large source artifacts.
-
-Instead of copying full specs, plans, reviews, or diffs into the handoff, reference them explicitly:
-
-- `.ramblings/briefs/...`
-- `.ramblings/plans/...`
-- `.ramblings/reviews/...`
-- `.ramblings/debug/...`
-
-## What the handoff should contain
-
-Include only what the next session actually needs:
-
-1. current objective;
-2. current state;
-3. relevant artifacts to read first;
-4. unresolved questions or blockers;
-5. suggested next step;
-6. suggested next skills.
-
-## Suggested output
+## Recommended template
 
 ```markdown
 ---
-topic: [broad topic]
-work_unit: [narrower work unit]
+topic: api-platform
+work_unit: api-platform-error-path-hardening
 references:
-  - .ramblings/briefs/...
-  - .ramblings/plans/...
-supersedes: [older handoff filename, optional]
+  - .ramblings/plans/api-platform.md
+  - .ramblings/checklists/2026-06-27-api-platform.yaml
 status: active
 ---
-
-# [Topic] Handoff
 
 ## Current objective
 
 ## Current state
 
-## Read these first
-- `.ramblings/briefs/...`
-- `.ramblings/plans/...`
+## Relevant artifacts to read first
+- .ramblings/...
 
-## Open questions / blockers
+## Blockers / questions
 
 ## Suggested next step
 
 ## Suggested next skills
-- `ramblings-*`
-
-## Notes to future session
+- ramblings-writing-plans
+- ramblings-implementing-plans
 ```
 
-## Guidance
+If you claim work is complete or ready for the next stage, reference equivalent evidence from current source artifacts.
 
-- if the handoff claims the work is ready for review, validation, or completion, reference the latest `ramblings-ready-check` result or include equivalent evidence;
-- new handoffs should use the normalized metadata contract even if older handoffs did not;
-- older handoffs without frontmatter remain valid historical context; do not rewrite them by default just to match the new format;
-- prefer forward-only migration unless an existing handoff is actively causing ambiguity for real resume work;
-- optimize for continuation, not storytelling;
-- keep it compact;
-- call out what changed the plan or direction;
-- redact or avoid sensitive information when it is not needed for continuation.
+Do not rewrite older handoffs by default; if unclear, create the next append-only handoff and mark `supersedes`.
