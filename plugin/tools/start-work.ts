@@ -3,7 +3,6 @@ import { recordBlockedTask, reconcileAndRerunContinuation, resolveStartWorkLoop 
 import { readChecklistStateDetailed, writeChecklistState } from "../start-work/checklist"
 import type {
   StartWorkRecordBlockedToolMetadata,
-  StartWorkResolveToolMetadata,
   StartWorkToolErrorMetadata,
 } from "../start-work/types"
 
@@ -42,13 +41,13 @@ const projectRootChecklistTaskArgs = {
 
 export const startWorkTools = {
   ramblings_start_work_resolve: tool({
-    description: "Resolve the active start-work candidate and continuation outcome.",
+    description: "Resolve the active start-work candidate and continuation outcome, including an optional soft skill suggestion from active-task metadata.",
     args: projectRootArgs,
     async execute({ project_root }: { project_root: string }) {
       const resolution = await resolveStartWorkLoop(project_root)
 
       if ("checklistPath" in resolution) {
-        const metadata: StartWorkResolveToolMetadata = {
+        const metadata = {
           ok: true,
           artifactResolutionKind: "resolved",
           checklistPath: resolution.checklistPath,
@@ -59,13 +58,14 @@ export const startWorkTools = {
           reason: resolution.continuation.reason,
           note: resolution.continuation.note ?? null,
           archiveActions: resolution.archiveActions ?? [],
+          skillSuggestion: resolution.skillSuggestion ?? null,
         }
 
         return okToolResult(`Resolved start-work state for ${project_root}.`, metadata)
       }
 
       if ("artifactResolutionKind" in resolution) {
-        const metadata: StartWorkResolveToolMetadata = {
+        const metadata = {
           ok: true,
           artifactResolutionKind: resolution.artifactResolutionKind,
           checklistPath: null,
@@ -75,12 +75,13 @@ export const startWorkTools = {
           reason: resolution.continuation.reason,
           note: resolution.continuation.note ?? null,
           archiveActions: [],
+          skillSuggestion: null,
         }
 
         return okToolResult(`Resolved start-work state for ${project_root}.`, metadata)
       }
 
-      const metadata: StartWorkResolveToolMetadata = {
+      const metadata = {
         ok: true,
         artifactResolutionKind: "resolved",
         checklistPath: null,
@@ -90,6 +91,7 @@ export const startWorkTools = {
         reason: resolution.reason,
         note: resolution.note ?? null,
         archiveActions: [],
+        skillSuggestion: null,
       }
 
       return okToolResult(`Resolved start-work state for ${project_root}.`, metadata)

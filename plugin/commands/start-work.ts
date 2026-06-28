@@ -33,7 +33,7 @@ Execution:
 - work in plan order unless the plan explicitly allows another independent runnable lane.
 - resolve dependencies before specialist dispatch; keep orchestrator-direct work narrow (control-plane, reconcile/verification, tiny synchronous checks, or no-viable-delegation).
 - prefer subagent-first execution for bounded, independent specialist tasks.
-- when preparing delegated work, plan task tags and capability hints may inform soft skill suggestions, but do not treat them as hard routing requirements.
+- when preparing delegated work, derive a single soft skill suggestion from the active checklist-task's 'tags' and 'suggested_capability' (if the match is clear); if metadata is weak/noisy, return no suggestion; expose any result as optional guidance only and never use it as a hard routing requirement.
 
 Hard rules:
 - no polling, no partial-output advancement, no dependent-work advancement without completion.

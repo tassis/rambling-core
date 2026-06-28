@@ -44,8 +44,8 @@ It drafts artifacts; it does not run runtime behavior.
 
 ## Tagging guidance
 
-- When drafting plans or task examples, prefer the shared task-tag starter set first.
-- Treat task-level `Tags` as the main runtime routing hints; do not assume skill-local tags are automatically consumed by OpenCode.
+- When drafting checklist task examples, prefer the shared task-tag starter set first.
+- Treat checklist task metadata as the execution-facing routing source; plan/task prose should avoid relying on task-level `Tags` and `Suggested Capability`.
 - Prefer starter tags such as:
   - **domain:** `coding`, `writing`, `frontend`, `backend`, `database`, `docs`, `workflow`
   - **process:** `planning`, `implementation`, `refactor`, `migration`, `debug`, `qa`, `handoff`, `archive`

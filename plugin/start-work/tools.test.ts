@@ -146,6 +146,32 @@ test("recordDelegatedLaneTerminalOutcome clears blocked task wait state", () => 
   assert.equal(outcome.checklist.tasks[0].unblock_when, undefined)
 })
 
+test("recordDelegatedLaneTerminalOutcome preserves routing metadata", () => {
+  const checklist: StartWorkChecklistState = {
+    plan: ".ramblings/plans/tool.md",
+    active_task: "task-1",
+    execution_state: "waiting",
+    tasks: [
+      {
+        id: "task-1",
+        title: "Delegated task",
+        status: "in_progress",
+        blocked_by: "delegation:explorer",
+        unblock_when: "delegated lane completion",
+        tags: ["backend", "urgent"],
+        suggested_capability: "integration",
+      },
+    ],
+  }
+
+  const outcome = recordDelegatedLaneTerminalOutcome(checklist, "task-1", "lane completed")
+
+  assert.equal(outcome.kind, "recorded")
+  assert.deepEqual(outcome.checklist.tasks[0].tags, ["backend", "urgent"])
+  assert.equal(outcome.checklist.tasks[0].suggested_capability, "integration")
+  assert.equal(outcome.checklist.tasks[0].next_action, undefined)
+})
+
 test("recordDelegatedLaneTerminalOutcome does not rewrite already unblocked terminal state", () => {
   const checklist: StartWorkChecklistState = {
     plan: ".ramblings/plans/tool.md",

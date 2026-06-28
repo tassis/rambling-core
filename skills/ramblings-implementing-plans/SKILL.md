@@ -31,10 +31,11 @@ It is execution-orchestration guidance, not planning discovery and not a generic
 - This skill owns task choice, verification gates, and checklist writeback.
 - Delegated lanes are bounded/reviewable; they do not own live state.
 
-### 5) Consume existing tags
-- Prefer task-provided `Tags`/`Suggested Capability` as execution hints.
-- Do not re-author task tags during execution; only add minimal, optional hints if none exist and it meaningfully helps routing.
-- Missing tags must never block execution.
+### 5) Consume checklist task routing metadata
+- Prefer routing metadata from the active checklist task (`tags`, `suggested_capability`) as execution hints.
+- Treat metadata-driven suggestion as optional: weak or noisy metadata may produce no suggestion.
+- Do not re-author checklist routing metadata during execution; only add minimal, optional hints if none exist and it meaningfully helps routing.
+- Missing routing metadata must never block execution.
 
 ## When to use
 
@@ -61,12 +62,14 @@ Do not parallelize if tasks edit the same seam, depend on each other, or the wor
 Routing for delegation follows a compact rule:
 
 - explicit user instruction first
-- then existing task `Tags`, then `Suggested Capability`
+- then existing checklist-task `tags`
+- then checklist-task `suggested_capability`
 - then conservative content-shape inference
 - otherwise fallback to this core skill
 
 When delegating, suggest a skill only for a clear, likely fit; skip weak/noisy matches; give one short reason only. Treat suggestions as advisory-only and environment-dependent, and never block execution if no suggestion exists or the lane does not load/follow it.
-When executing a task, start by reading its existing tags/capability metadata as the first execution signal and only supplement sparsely if the plan/task is unclear.
+The runtime suggestion step itself may return no match.
+When executing a task, start by reading its active checklist-task `tags`/`suggested_capability` metadata as the first execution signal and only supplement sparsely if the plan/task is unclear.
 
 ## Execution flow
 

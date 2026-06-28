@@ -76,7 +76,9 @@ This lifecycle is implemented around durable project-root `.ramblings/` artifact
 - `conductor` may use plugin-provided agents when available, but extension packs are optional and core-owned execution paths remain safe fallback.
 - Non-core workflow methods and specialist packs are kept out of this package’s default surface.
 
-When installed, extension packs should prefer specialized-first routing only when the match is clear; otherwise the generic core phase remains the fallback.
+When installed, extension packs should prefer specialist routing only when the match is clear; otherwise the generic core phase remains the fallback.
+
+`start-work` emits optional guidance from checklist task `tags` (with optional `suggested_capability`) as a **pack-level advisory signal only**. For coding tasks, the recommended output is `ramblings-coding-flow`, which is then responsible for choosing any internal coding specialist. This is not a runtime selector registry, not automatic dispatch, and does not replace `/start-work` lifecycle ownership.
 
 ### Execution-core contract
 

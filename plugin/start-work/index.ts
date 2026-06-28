@@ -6,14 +6,17 @@ import {
   type StartWorkChecklistState,
   type StartWorkContinuation,
   type StartWorkRecordTerminalToolMetadata,
+  type StartWorkSkillSuggestion,
   type StartWorkTaskSelection,
 } from "./types"
+import { inferStartWorkSkillSuggestion } from "./skill-suggestion"
 
 export interface StartWorkLoopState {
   checklistPath: string
   checklist: StartWorkChecklistState
   taskSelection: StartWorkTaskSelection
   continuation: StartWorkContinuation
+  skillSuggestion?: StartWorkSkillSuggestion
   archiveActions?: Array<{
     archivePath: string
     archivedFiles: string[]
@@ -53,14 +56,28 @@ export async function resolveStartWorkLoop(
     checklist: artifactResolution.checklist,
     taskSelection,
   })
+  const skillSuggestion = getActiveTaskSuggestion(taskSelection)
 
   return {
     checklistPath: artifactResolution.candidate.checklistPath,
     checklist: artifactResolution.checklist,
     taskSelection,
     continuation,
+    skillSuggestion,
     archiveActions: artifactResolution.archiveActions,
   }
+}
+
+function getActiveTaskSuggestion(taskSelection: StartWorkTaskSelection): StartWorkSkillSuggestion | undefined {
+  if (taskSelection.kind === "task" || taskSelection.kind === "waiting" || taskSelection.kind === "blocked") {
+    const suggestion = inferStartWorkSkillSuggestion(taskSelection.task)
+
+    if (suggestion) {
+      return suggestion
+    }
+  }
+
+  return undefined
 }
 
 export function recordDelegatedLaneTerminalResult(

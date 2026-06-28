@@ -30,12 +30,14 @@ Optional execution state:
 In Conductor Mode these files are planning artifacts under `.ramblings/` and must not be treated as product edits.
 
 ## Tag responsibility in planning
-- This phase is the main place to record task tags explicitly for downstream execution hints.
+
+- Plans should stay focused on risk, intent, paths, and verification.
 - Keep tags few, meaningful, and optional.
 - Missing or sparse tags are valid; execution should not depend on them being present.
-- Treat task-level `Tags` as the main work-shape routing hints; skill-local wording may help discovery, but the plan is the source of truth for task-level tags.
 
-### Preferred starter tag set
+Task-level routing metadata is authored in checklist tasks, not plan task blocks.
+
+### Preferred starter tag set (for checklist task authoring)
 
 Prefer this shared starter set before inventing new tags.
 
@@ -56,7 +58,7 @@ If one of these fits, use it instead of inventing a synonym. Add a new tag only 
 ### Routing
 
 - Explicit request first: follow user direction for handoff (e.g., execute, investigate, or delegate).
-- Then `Tags` / `Suggested Capability`: when metadata clearly maps to a specialized lane, route there first.
+- Then checklist task metadata: when task metadata clearly maps to a specialized lane, route there first.
 - Then conservative inference: if work is already sequenced and checklist-ready -> `ramblings-implementing-plans`; if not implementation-ready -> `ramblings-brainstorming`.
 - Otherwise keep using this core planning skill as fallback.
 
@@ -88,7 +90,7 @@ The checklist is the source of **live execution state**; the plan is planning in
 - Exact file paths for read/create/modify.
 - Ordered tasks.
 - Verification for each risky step.
-- Optional explicit task tags in each task block when they help routing.
+- Route-sensitive metadata (`tags`, `suggested_capability`) belongs in checklist task entries, not plan task blocks.
 - Clear “manual when no automation” fallback.
 - Completion criteria that are observable.
 - Resumption via checklist reference.
@@ -105,7 +107,6 @@ The checklist is the source of **live execution state**; the plan is planning in
 
 **Why:** [why this task exists]
 
-**Tags:** [optional, few, prefer the shared starter set first, e.g. `coding`, `backend`, `migration`]
 **Risk:** [low/medium/high; key uncertainty]
 
 **Files:**
@@ -114,8 +115,7 @@ The checklist is the source of **live execution state**; the plan is planning in
 - Create: `path/to/file`
 - Verify: `path/to/test-or-command`
 
-**Suggested Capability:** [optional]
-**Suggested External Review:** [optional]
+**Suggested External Review:** [optional, plan-only review hint; not checklist routing metadata]
 
 **Steps:**
 1. [specific action]
@@ -136,7 +136,7 @@ The checklist is the source of **live execution state**; the plan is planning in
 
 ## Principle rules (short form)
 
-1. `Tags`, `Risk`, `Suggested Capability`, `Suggested External Review` are soft hints only.
+1. `Risk`, `Suggested External Review` are soft hints only; task routing metadata belongs in checklist tasks.
 2. Use exact paths and deterministic commands.
 3. Keep tasks small, concrete, and ordered.
 4. State exactly which tests run; if unavailable, state manual checks explicitly.

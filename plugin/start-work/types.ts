@@ -30,6 +30,8 @@ export interface StartWorkChecklistTask {
   unblock_when?: string
   next_action?: string
   last_update?: string
+  tags?: string[]
+  suggested_capability?: string
 }
 
 export interface StartWorkChecklistState {
@@ -38,6 +40,12 @@ export interface StartWorkChecklistState {
   execution_state: StartWorkExecutionState
   tasks: StartWorkChecklistTask[]
   notes?: string[]
+}
+
+export interface StartWorkSkillSuggestion {
+  skill: string
+  source: "tag" | "suggested_capability"
+  signal: string
 }
 
 export interface StartWorkPlanCandidate {
@@ -156,6 +164,7 @@ export interface StartWorkResolveToolMetadata {
   reason: string
   note: string | null
   archiveActions: StartWorkArchiveAction[]
+  skillSuggestion: StartWorkSkillSuggestion | null
 }
 
 export interface StartWorkRecordBlockedToolMetadata {

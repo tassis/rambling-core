@@ -186,6 +186,14 @@ function serializeTaskCanonical(task: StartWorkChecklistTask): StartWorkChecklis
     serialized.last_update = task.last_update
   }
 
+  if (task.suggested_capability !== undefined && task.suggested_capability !== null) {
+    serialized.suggested_capability = task.suggested_capability
+  }
+
+  if (task.tags !== undefined && task.tags !== null) {
+    serialized.tags = task.tags
+  }
+
   return serialized
 }
 
@@ -249,6 +257,8 @@ type ParsedChecklistTask = {
   unblock_when?: unknown
   next_action?: unknown
   last_update?: unknown
+  tags?: unknown
+  suggested_capability?: unknown
 }
 
 function parseTaskShape(rawTask: ParsedChecklistTask, index: number): StartWorkChecklistTask {
@@ -272,6 +282,8 @@ function parseTaskShape(rawTask: ParsedChecklistTask, index: number): StartWorkC
   validateNullableString(rawTask.unblock_when, `Checklist task ${rawTask.id} unblock_when`)
   validateNullableString(rawTask.next_action, `Checklist task ${rawTask.id} next_action`)
   validateNullableString(rawTask.last_update, `Checklist task ${rawTask.id} last_update`)
+  validateNullableString(rawTask.suggested_capability, `Checklist task ${rawTask.id} suggested_capability`)
+  validateStringList(rawTask.tags, `Checklist task ${rawTask.id} tags`)
 
   return {
     id: rawTask.id,
@@ -281,6 +293,19 @@ function parseTaskShape(rawTask: ParsedChecklistTask, index: number): StartWorkC
     unblock_when: rawTask.unblock_when === undefined || rawTask.unblock_when === null ? undefined : String(rawTask.unblock_when),
     next_action: rawTask.next_action === undefined || rawTask.next_action === null ? undefined : String(rawTask.next_action),
     last_update: rawTask.last_update === undefined || rawTask.last_update === null ? undefined : String(rawTask.last_update),
+    suggested_capability:
+      rawTask.suggested_capability === undefined || rawTask.suggested_capability === null
+        ? undefined
+        : String(rawTask.suggested_capability),
+    tags: rawTask.tags === undefined || rawTask.tags === null ? undefined : (rawTask.tags as string[]).map(String),
+  }
+}
+
+function validateStringList(value: unknown, label: string) {
+  if (value !== undefined && value !== null) {
+    if (!Array.isArray(value) || value.some((tag) => typeof tag !== "string")) {
+      throw new Error(`${label} must be an array of strings when present.`)
+    }
   }
 }
 

@@ -69,6 +69,26 @@ tasks: []
   )
 })
 
+test("parseChecklistState preserves optional task routing metadata", () => {
+  const checklist = parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
+active_task: null
+execution_state: running
+tasks:
+  - id: task-1
+    title: Routed task
+    status: not_started
+    tags:
+      - backend
+      - urgent
+    suggested_capability: integration
+`)
+
+  assert.equal(checklist.tasks[0].tags?.length, 2)
+  assert.equal(checklist.tasks[0].tags?.[0], "backend")
+  assert.equal(checklist.tasks[0].tags?.[1], "urgent")
+  assert.equal(checklist.tasks[0].suggested_capability, "integration")
+})
+
 test("parseChecklistState rejects malformed tasks with a validation error", () => {
   assert.throws(
     () => parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
@@ -117,4 +137,44 @@ test("serializeChecklistState omits absent optional task fields", () => {
   assert.ok(!yaml.includes("unblock_when:"))
   assert.ok(!yaml.includes("next_action:"))
   assert.ok(!yaml.includes("last_update:"))
+})
+
+test("serializeChecklistState preserves present task routing metadata", () => {
+  const yaml = serializeChecklistState({
+    plan: ".ramblings/plans/2026-06-19-topic.md",
+    active_task: null,
+    execution_state: "running",
+    tasks: [
+      {
+        id: "task-1",
+        title: "Routed task",
+        status: "not_started",
+        tags: ["backend", "urgent"],
+        suggested_capability: "integration",
+      },
+    ],
+  })
+
+  assert.ok(yaml.includes("tags:"))
+  assert.ok(yaml.includes("suggested_capability: integration"))
+
+  const reparsed = parseChecklistState(yaml)
+  assert.deepEqual(reparsed.tasks[0].tags, ["backend", "urgent"])
+  assert.equal(reparsed.tasks[0].suggested_capability, "integration")
+})
+
+test("parseChecklistState rejects malformed task routing metadata", () => {
+  assert.throws(
+    () =>
+      parseChecklistState(`plan: .ramblings/plans/2026-06-19-topic.md
+active_task: null
+execution_state: running
+tasks:
+  - id: task-1
+    title: Bad metadata
+    status: not_started
+    tags: [backend, 1]
+`),
+    /must be an array of strings when present/,
+  )
 })
